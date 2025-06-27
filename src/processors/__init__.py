@@ -11,9 +11,14 @@ from .html_processor import HTMLProcessor
 from .enhanced_costco_processor import EnhancedCostcoProcessor
 from .enhanced_html_processor import EnhancedHTMLProcessor
 
+# FIXED: Super enhanced processor
+from .super_enhanced_costco_processor import FixedSuperEnhancedCostcoProcessor
+
 __all__ = [
     # Original processors
     'CostcoProcessor', 'HTMLProcessor',
     # Enhanced processors  
-    'EnhancedCostcoProcessor', 'EnhancedHTMLProcessor'
+    'EnhancedCostcoProcessor', 'EnhancedHTMLProcessor',
+    # FIXED: Super enhanced processor
+    'FixedSuperEnhancedCostcoProcessor'
 ]

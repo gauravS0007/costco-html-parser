@@ -10,10 +10,15 @@ from .content_detector import detect_content_type, get_content_byline
 # Enhanced utilities
 from .enhanced_content_detector import EnhancedContentDetector
 
+# FIXED: Universal content extractor
+from .universal_content_extractor import FixedUniversalContentExtractor, ExtractedContent
+
 __all__ = [
     # Original utilities
     'fix_image_urls', 'score_image', 'get_scored_images', 'format_images_for_ai',
     'detect_content_type', 'get_content_byline',
     # Enhanced utilities
-    'EnhancedContentDetector'
+    'EnhancedContentDetector',
+    # FIXED: Universal extractor
+    'FixedUniversalContentExtractor', 'ExtractedContent'
 ]

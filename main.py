@@ -21,12 +21,14 @@ def setup_logging():
 
 def print_banner():
     """Print enhanced application banner."""
-    print("🏪 Enhanced Costco Connection HTML Parser")
-    print("=" * 50)
-    print("🎯 Schema-Aware Content Extraction")
-    print("🔍 Content Types: Recipe, Travel, Tech, Lifestyle, Editorial, Shopping, Member")
+    print("🏪 SUPER Enhanced Costco Connection HTML Parser")
+    print("=" * 60)
+    print("🎯 Universal Content Extraction + AI Enhancement")
+    print("🔍 Content Types: Recipe, Travel, Tech, Lifestyle, Editorial, Shopping, Member, Music, Reviews")
     print("🚀 AI-Powered Enhancement with AWS Bedrock Claude")
-    print("=" * 50)
+    print("✨ Complete Content Extraction (lyrics, reviews, author details)")
+    print("🛡️ Smart Filtering (removes nav, footer, ads, cookies)")
+    print("=" * 60)
 
 
 def main():
@@ -67,23 +69,26 @@ def main():
     if len(html_files) > 5:
         print(f"   ... and {len(html_files) - 5} more files")
 
-    print(f"\n🎯 Enhanced Processing Features:")
-    print(f"   ✅ Schema-aware content extraction")
-    print(f"   ✅ Content type auto-detection") 
+    print(f"\n🎯 Super Enhanced Processing Features:")
+    print(f"   ✅ Universal content extraction")
+    print(f"   ✅ Smart navigation/ads filtering") 
+    print(f"   ✅ Enhanced image processing")
+    print(f"   ✅ Content-type auto-detection") 
     print(f"   ✅ AI-powered enhancement")
-    print(f"   ✅ Quality scoring")
+    print(f"   ✅ Comprehensive quality scoring")
     print(f"   ✅ Multi-format JSON export")
+    print(f"   ✅ Handles ALL content types (including lyrics, reviews)")
 
     # Confirm processing
     print(f"\n" + "="*50)
-    confirm = input(f"🚀 Process {len(html_files)} files with enhanced extraction? (y/n): ").lower()
+    confirm = input(f"🚀 Process {len(html_files)} files with super enhanced extraction? (y/n): ").lower()
     if confirm != 'y':
         print("❌ Processing cancelled")
         return
 
     # Process files with enhanced extraction
     try:
-        print("🔄 Starting enhanced processing...")
+        print("🔄 Starting super enhanced processing...")
         print("⏳ This may take a while due to AI enhancement...")
         
         results = processor.process_all(html_files)

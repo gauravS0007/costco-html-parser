@@ -10,7 +10,7 @@ from typing import List, Optional, Dict
 from dataclasses import asdict
 from enum import Enum
 
-from ..processors.enhanced_costco_processor import EnhancedCostcoProcessor
+from ..processors.super_enhanced_costco_processor import FixedSuperEnhancedCostcoProcessor
 from ..models.content_schemas import EnhancedPageStructure, ContentType
 from ..config.settings import SUPPORTED_EXTENSIONS
 
@@ -44,8 +44,8 @@ class EnhancedHTMLProcessor:
     """Enhanced HTML processor with schema-aware content extraction."""
 
     def __init__(self):
-        """Initialize enhanced processor with statistics tracking."""
-        self.processor = EnhancedCostcoProcessor()
+        """Initialize FIXED super enhanced processor with statistics tracking."""
+        self.processor = FixedSuperEnhancedCostcoProcessor()
         self.stats = {
             'processed': 0,
             'successful': 0,
