@@ -1,4 +1,4 @@
-# src/config/__init__.py
+# ===== src/config/__init__.py =====
 """
 Configuration settings for Costco HTML parser.
 """
