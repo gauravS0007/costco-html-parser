@@ -1,5 +1,6 @@
 """
-FIXED: Super Enhanced Costco Processor with proper content type detection and image handling
+FIXED: Super Enhanced Costco Processor with Conservative AI Merging
+This fixes the AI over-processing issues and improves recipe handling.
 """
 
 import json
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 class FixedSuperEnhancedCostcoProcessor:
-    """FIXED: Super Enhanced Costco processor with proper extraction"""
+    """FIXED: Super Enhanced Costco processor with conservative AI merging"""
 
     def __init__(self):
         """Initialize processor with AWS Bedrock and fixed universal extractor."""
@@ -43,7 +44,7 @@ class FixedSuperEnhancedCostcoProcessor:
 
     def process_content(self, html_content: str, url: str, filename: str) -> Optional[EnhancedPageStructure]:
         """
-        FIXED: Process content with proper extraction and content type detection.
+        FIXED: Process content with improved extraction and conservative AI merging.
         """
         try:
             logger.info(f"🔧 FIXED processing for {filename}")
@@ -59,9 +60,9 @@ class FixedSuperEnhancedCostcoProcessor:
                 extracted_content, content_type_enum, filename, url
             )
             
-            # Step 4: Enhance with AI if available
-            if self.bedrock:
-                ai_enhanced_content = self._enhance_with_ai_fixed(
+            # Step 4: Conservative AI enhancement (only if extraction failed)
+            if self.bedrock and self._should_use_ai_enhancement(content_schema, extracted_content):
+                ai_enhanced_content = self._enhance_with_ai_conservative(
                     content_schema, extracted_content, content_type_enum, url, filename
                 )
                 if ai_enhanced_content:
@@ -80,6 +81,33 @@ class FixedSuperEnhancedCostcoProcessor:
         except Exception as e:
             logger.error(f"❌ FIXED processing failed for {filename}: {e}")
             return None
+
+    def _should_use_ai_enhancement(self, content_schema, extracted_content: ExtractedContent) -> bool:
+        """Determine if AI enhancement is needed (conservative approach)"""
+        
+        # Only use AI if extraction failed or is clearly incomplete
+        needs_ai = False
+        
+        # Check if basic fields are missing
+        if not content_schema.title or len(content_schema.title) < 5:
+            needs_ai = True
+            
+        # Check content-type specific needs
+        if content_schema.content_type == ContentType.RECIPE:
+            ingredients = getattr(content_schema, 'ingredients', [])
+            instructions = getattr(content_schema, 'instructions', [])
+            
+            # Only use AI if we have no ingredients or instructions
+            if len(ingredients) < 2 or len(instructions) < 1:
+                needs_ai = True
+                logger.info("AI enhancement needed: recipe missing ingredients/instructions")
+        
+        if needs_ai:
+            logger.info("AI enhancement will be used")
+        else:
+            logger.info("Skipping AI enhancement - extraction looks good")
+            
+        return needs_ai
 
     def _map_content_type_fixed(self, detected_type: str, filename: str, url: str) -> ContentType:
         """FIXED: Enhanced content type mapping with filename and URL analysis"""
@@ -142,6 +170,10 @@ class FixedSuperEnhancedCostcoProcessor:
             'publish_date': self._extract_date_from_filename(filename)
         }
         
+        # FIXED: Don't use placeholder bylines
+        if base_data['byline'] and 'lotions & creams' in base_data['byline'].lower():
+            base_data['byline'] = self._get_default_byline(content_type)
+        
         # Create content-specific schema with FIXED extraction
         if content_type == ContentType.RECIPE:
             return self._build_recipe_schema_fixed(extracted, base_data)
@@ -168,29 +200,17 @@ class FixedSuperEnhancedCostcoProcessor:
         ingredients = extracted.metadata.get('ingredients', [])
         instructions = extracted.metadata.get('instructions', [])
         
-        # Fallback extraction from lists if metadata is empty
-        if not ingredients or not instructions:
-            for list_data in extracted.lists:
-                list_text = ' '.join(list_data['items']).lower()
-                
-                # Check if this list contains ingredients (has measurements)
-                has_measurements = any(unit in list_text for unit in 
-                                     ['cup', 'tablespoon', 'teaspoon', 'ounce', 'pound'])
-                
-                if has_measurements and not ingredients:
-                    ingredients = list_data['items']
-                elif list_data['type'] == 'ordered' and not instructions and not has_measurements:
-                    instructions = list_data['items']
-        
         # Extract timing information
         prep_time = extracted.metadata.get('prep_time', '')
         cook_time = extracted.metadata.get('cook_time', '')
         servings = extracted.metadata.get('servings', '')
         
+        logger.info(f"Building recipe schema: {len(ingredients)} ingredients, {len(instructions)} instructions")
+        
         return RecipeContent(
             **base_data,
-            ingredients=ingredients[:15],  # Reasonable limit
-            instructions=instructions[:10],
+            ingredients=ingredients[:20],  # Reasonable limit
+            instructions=instructions[:15],
             prep_time=prep_time,
             cook_time=cook_time,
             servings=servings,
@@ -327,11 +347,11 @@ class FixedSuperEnhancedCostcoProcessor:
             poll_results=poll_results
         )
 
-    def _enhance_with_ai_fixed(self, content_schema, extracted_content: ExtractedContent, 
-                              content_type: ContentType, url: str, filename: str):
-        """FIXED: AI enhancement with better prompts"""
+    def _enhance_with_ai_conservative(self, content_schema, extracted_content: ExtractedContent, 
+                                     content_type: ContentType, url: str, filename: str):
+        """FIXED: Conservative AI enhancement - only use when extraction fails"""
         try:
-            prompt = self._create_ai_prompt_fixed(
+            prompt = self._create_ai_prompt_conservative(
                 content_schema, extracted_content, content_type, url, filename
             )
             
@@ -339,16 +359,16 @@ class FixedSuperEnhancedCostcoProcessor:
             if not ai_result:
                 return None
 
-            enhanced_schema = self._merge_ai_results_fixed(content_schema, ai_result, content_type)
+            enhanced_schema = self._merge_ai_results_conservative(content_schema, ai_result, content_type)
             return enhanced_schema
 
         except Exception as e:
             logger.error(f"AI enhancement failed: {e}")
             return None
 
-    def _create_ai_prompt_fixed(self, content_schema, extracted: ExtractedContent, 
-                               content_type: ContentType, url: str, filename: str) -> str:
-        """FIXED: Create enhanced AI prompts"""
+    def _create_ai_prompt_conservative(self, content_schema, extracted: ExtractedContent, 
+                                      content_type: ContentType, url: str, filename: str) -> str:
+        """FIXED: Create conservative AI prompts that don't override good extraction"""
         
         # Get best images for AI
         best_images = sorted(extracted.images, key=lambda x: x['score'], reverse=True)[:5]
@@ -357,86 +377,63 @@ class FixedSuperEnhancedCostcoProcessor:
         # Get main content summary
         content_preview = '\n'.join(extracted.main_content[:3])
         
-        base_prompt = f"""ENHANCE this {content_type.value.upper()} content from Costco Connection magazine.
+        base_prompt = f"""ENHANCE MISSING FIELDS ONLY for this {content_type.value.upper()} content from Costco Connection magazine.
 
 **SOURCE INFO:**
 URL: {url}
 Filename: {filename}
-Extracted Title: "{extracted.title}"
-Byline: "{extracted.byline}"
+Current Title: "{content_schema.title}"
+Current Byline: "{content_schema.byline}"
 
-**AVAILABLE IMAGES (prioritized by relevance):**
+**AVAILABLE IMAGES (use HIGHEST scoring):**
 {images_text}
+
+**CRITICAL RULES:**
+1. ONLY provide fields that are currently missing or empty
+2. DO NOT modify existing good data
+3. DO NOT generate fake bylines - only use real attribution from content
+4. Extract ingredients and instructions EXACTLY as written
+5. If you find recipe sections (FILLING, STREUSEL, CAKE), preserve ALL sections
 
 **CONTENT PREVIEW:**
 {content_preview}
 
-**TASK:** Enhance and refine the extracted data. Use the BEST scoring image as featured_image.
+**TASK:** Fill in missing fields only. Use HIGHEST scoring image as featured_image.
 """
 
         # Content-type specific enhancement
         if content_type == ContentType.RECIPE:
-            ingredients = getattr(content_schema, 'ingredients', [])
-            instructions = getattr(content_schema, 'instructions', [])
+            current_ingredients = getattr(content_schema, 'ingredients', [])
+            current_instructions = getattr(content_schema, 'instructions', [])
             
             base_prompt += f"""
-**RECIPE DATA:**
-Ingredients Found: {len(ingredients)}
-Instructions Found: {len(instructions)}
+**CURRENT RECIPE DATA:**
+Ingredients: {len(current_ingredients)} found
+Instructions: {len(current_instructions)} found
 
-**OUTPUT (JSON only):**
+**OUTPUT (JSON only) - ONLY provide missing fields:**
 {{
-  "title": "Clear recipe name",
-  "featured_image": "HIGHEST SCORING IMAGE URL",
-  "image_alt": "Image description",
-  "ingredients": ["refined ingredient list with measurements"],
-  "instructions": ["step-by-step cooking instructions"],
-  "prep_time": "preparation time",
-  "cook_time": "cooking time",
-  "servings": "number of servings"
+  "title": "Only if current title is missing or generic",
+  "featured_image": "HIGHEST SCORING IMAGE URL (if image missing)",
+  "image_alt": "Only if missing",
+  "ingredients": ["Only if current ingredients list is empty", "preserve all sections like FILLING, STREUSEL"],
+  "instructions": ["Only if current instructions are empty", "exact steps as written"],
+  "prep_time": "Only if missing",
+  "cook_time": "Only if missing",
+  "servings": "Only if missing"
 }}"""
 
-        elif content_type == ContentType.TRAVEL:
-            destinations = getattr(content_schema, 'destinations', [])
-            
+        else:
             base_prompt += f"""
-**TRAVEL DATA:**
-Destinations Found: {destinations}
-
-**OUTPUT (JSON only):**
+**OUTPUT (JSON only) - ONLY provide missing fields:**
 {{
-  "title": "Travel article title",
-  "featured_image": "HIGHEST SCORING IMAGE URL",
-  "image_alt": "Image description",
-  "destinations": ["city/location names"],
-  "attractions": ["tourist attractions mentioned"],
-  "cultural_notes": ["cultural information"],
-  "travel_tips": ["practical travel advice"]
+  "title": "Only if current title is missing",
+  "featured_image": "HIGHEST SCORING IMAGE URL (if missing)",
+  "image_alt": "Only if missing",
+  "description": "Only if current description is missing"
 }}"""
 
-        elif content_type == ContentType.TECH:
-            base_prompt += f"""
-**OUTPUT (JSON only):**
-{{
-  "title": "Tech article title",
-  "featured_image": "HIGHEST SCORING IMAGE URL",
-  "image_alt": "Image description",
-  "products": ["technology products mentioned"],
-  "features": ["product features"],
-  "buying_guide": ["purchasing recommendations"]
-}}"""
-
-        else:  # Editorial, Member, Shopping, Lifestyle
-            base_prompt += f"""
-**OUTPUT (JSON only):**
-{{
-  "title": "Article title",
-  "featured_image": "HIGHEST SCORING IMAGE URL",
-  "image_alt": "Image description",
-  "description": "Enhanced article description"
-}}"""
-
-        base_prompt += "\n\nProvide ONLY valid JSON. Use the highest scoring image as featured_image."
+        base_prompt += "\n\nProvide ONLY missing fields. Do not override existing good data."
         return base_prompt
 
     def _format_images_for_ai_fixed(self, images: list) -> str:
@@ -454,46 +451,62 @@ Destinations Found: {destinations}
         
         return '\n'.join(formatted)
 
-    def _merge_ai_results_fixed(self, content_schema, ai_result: Dict, content_type: ContentType):
-        """FIXED: Merge AI results with validation"""
+    def _merge_ai_results_conservative(self, content_schema, ai_result: Dict, content_type: ContentType):
+        """FIXED: Conservative merging - prefer extracted data over AI"""
         try:
-            # Always update basic fields if provided
-            if 'title' in ai_result and ai_result['title'].strip():
+            # Only update fields if they're currently empty or clearly wrong
+            
+            # Title: Only if current title is empty or generic
+            if ('title' in ai_result and ai_result['title'].strip() and 
+                (not content_schema.title or len(content_schema.title) < 5 or 
+                 'untitled' in content_schema.title.lower())):
+                logger.info(f"AI updating title: {ai_result['title']}")
                 content_schema.title = ai_result['title'].strip()
             
-            if 'featured_image' in ai_result and ai_result['featured_image'].strip():
+            # Featured image: Only if current is empty
+            if ('featured_image' in ai_result and ai_result['featured_image'].strip() and 
+                not content_schema.featured_image):
+                logger.info(f"AI adding featured image")
                 content_schema.featured_image = ai_result['featured_image'].strip()
             
-            if 'image_alt' in ai_result and ai_result['image_alt'].strip():
-                content_schema.image_alt = ai_result['image_alt'].strip()
+            # Byline: Only use AI if it looks real and current is default
+            ai_byline = ai_result.get('byline', '').strip()
+            if (ai_byline and 
+                'lotions & creams' not in ai_byline.lower() and
+                ai_byline.startswith('By ') and
+                (not content_schema.byline or 'costco' in content_schema.byline.lower())):
+                logger.info(f"AI updating byline: {ai_byline}")
+                content_schema.byline = ai_byline
             
-            if 'description' in ai_result and ai_result['description'].strip():
+            # Description: Only if missing
+            if ('description' in ai_result and ai_result['description'].strip() and
+                (not content_schema.description or len(content_schema.description) < 20)):
                 content_schema.description = ai_result['description'].strip()
-
-            # Content-type specific merging
+            
+            # Recipe-specific: Only merge if extracted data is empty
             if content_type == ContentType.RECIPE:
-                for field in ['ingredients', 'instructions']:
-                    if field in ai_result and ai_result[field]:
-                        setattr(content_schema, field, ai_result[field])
+                # Ingredients: Prefer extracted, only use AI if empty
+                extracted_ingredients = getattr(content_schema, 'ingredients', [])
+                if len(extracted_ingredients) < 2 and 'ingredients' in ai_result and ai_result['ingredients']:
+                    logger.info(f"AI adding ingredients: {len(ai_result['ingredients'])} items")
+                    content_schema.ingredients = ai_result['ingredients']
                 
+                # Instructions: Same conservative approach
+                extracted_instructions = getattr(content_schema, 'instructions', [])
+                if len(extracted_instructions) < 1 and 'instructions' in ai_result and ai_result['instructions']:
+                    logger.info(f"AI adding instructions: {len(ai_result['instructions'])} steps")
+                    content_schema.instructions = ai_result['instructions']
+                
+                # Timing: Only if not already extracted
                 for field in ['prep_time', 'cook_time', 'servings']:
-                    if field in ai_result and ai_result[field]:
-                        setattr(content_schema, field, ai_result[field])
-
-            elif content_type == ContentType.TRAVEL:
-                for field in ['destinations', 'attractions', 'cultural_notes', 'travel_tips']:
-                    if field in ai_result and ai_result[field]:
-                        setattr(content_schema, field, ai_result[field])
-
-            elif content_type == ContentType.TECH:
-                for field in ['products', 'features', 'buying_guide']:
-                    if field in ai_result and ai_result[field]:
+                    current_value = getattr(content_schema, field, '')
+                    if (not current_value and field in ai_result and ai_result[field]):
                         setattr(content_schema, field, ai_result[field])
 
             return content_schema
 
         except Exception as e:
-            logger.error(f"Error merging AI results: {e}")
+            logger.error(f"Error in conservative merging: {e}")
             return content_schema
 
     def _build_enhanced_structure_fixed(self, url: str, content_schema, 
@@ -517,7 +530,7 @@ Destinations Found: {destinations}
             'content_type': content_schema.content_type.value,
             'universal_extraction': True,
             'ai_enhanced': self.bedrock is not None,
-            'extraction_method': 'fixed_super_enhanced',
+            'extraction_method': 'fixed_super_enhanced_conservative',
             'content_stats': {
                 'paragraphs_extracted': len(extracted.main_content),
                 'images_found': len(extracted.images),
@@ -527,7 +540,8 @@ Destinations Found: {destinations}
             },
             'best_image_score': max([img['score'] for img in extracted.images]) if extracted.images else 0,
             'author_details_found': bool(extracted.author_details),
-            'byline_found': bool(extracted.byline)
+            'byline_found': bool(extracted.byline),
+            'recipe_sections_found': len(extracted.metadata.get('ingredients', [])) if content_schema.content_type == ContentType.RECIPE else 0
         }
 
         return EnhancedPageStructure(
@@ -549,7 +563,7 @@ Destinations Found: {destinations}
             score += 10
         if content_schema.featured_image:
             score += 20  # Higher weight for images
-        if content_schema.byline:
+        if content_schema.byline and 'lotions & creams' not in content_schema.byline.lower():
             score += 5
             
         # Extracted content richness
@@ -570,9 +584,11 @@ Destinations Found: {destinations}
         # Content-specific bonuses
         if content_schema.content_type == ContentType.RECIPE:
             if hasattr(content_schema, 'ingredients') and content_schema.ingredients:
-                score += 10
+                ingredient_count = len([ing for ing in content_schema.ingredients if not ing.startswith('===')])
+                score += min(ingredient_count * 2, 20)  # Up to 20 for ingredients
             if hasattr(content_schema, 'instructions') and content_schema.instructions:
-                score += 10
+                instruction_count = len([inst for inst in content_schema.instructions if not inst.startswith('===')])
+                score += min(instruction_count * 3, 15)  # Up to 15 for instructions
         elif content_schema.content_type == ContentType.TRAVEL:
             if hasattr(content_schema, 'destinations') and content_schema.destinations:
                 score += 10
@@ -710,23 +726,65 @@ def create_fixed_processor():
     return FixedSuperEnhancedCostcoProcessor()
 
 
-# Example usage
+# Debug helper for testing
+def debug_recipe_extraction(html_file_path: str):
+    """Debug helper to test recipe extraction on a specific file"""
+    
+    processor = FixedSuperEnhancedCostcoProcessor()
+    
+    try:
+        with open(html_file_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        
+        # Extract URL from filename
+        filename = html_file_path.split('/')[-1]
+        url = f"https://www.costco.com/{filename}"
+        
+        # Debug the extraction
+        processor.universal_extractor.debug_recipe_extraction(html_content, url)
+        
+        # Process with fixed system
+        result = processor.process_content(html_content, url, filename)
+        
+        if result and result.content.content_type == ContentType.RECIPE:
+            print("\n=== FIXED RECIPE RESULTS ===")
+            print(f"Title: {result.content.title}")
+            print(f"Byline: {result.content.byline}")
+            print(f"Ingredients ({len(result.content.ingredients)}):")
+            for i, ingredient in enumerate(result.content.ingredients[:10]):
+                print(f"  {i+1}. {ingredient}")
+            print(f"Instructions ({len(result.content.instructions)}):")
+            for i, instruction in enumerate(result.content.instructions[:5]):
+                print(f"  {i+1}. {instruction[:100]}...")
+            print(f"Quality Score: {result.content_quality_score}")
+        
+    except Exception as e:
+        print(f"Debug failed: {e}")
+
+
 if __name__ == "__main__":
+    # Example usage
     processor = FixedSuperEnhancedCostcoProcessor()
     
     # Test with sample content
     test_html = """
     <html>
-        <head><title>Spinach Lasagna Roll Ups | Costco</title></head>
+        <head><title>Grape Crumble | Costco</title></head>
         <body>
             <article>
-                <h1>Spinach Lasagna Roll Ups</h1>
-                <p>Recipe and photo courtesy of Kylie Lato</p>
+                <h1>Grape Crumble</h1>
+                <h3>FILLING</h3>
                 <ul>
-                    <li>8 lasagna noodles</li>
-                    <li>2 cups ricotta cheese</li>
+                    <li>2 cups black grapes</li>
+                    <li>⅔ cup sugar</li>
+                    <li>6 Tbsp water, divided</li>
                 </ul>
-                <img src="/live/resource/img/10_23_recipe.jpg" alt="Delicious lasagna" />
+                <h3>STREUSEL</h3>
+                <ul>
+                    <li>⅓ cup flour</li>
+                    <li>¼ cup sugar</li>
+                </ul>
+                <img src="/live/resource/img/grape_crumble.jpg" alt="Delicious grape crumble" />
             </article>
         </body>
     </html>
@@ -734,14 +792,14 @@ if __name__ == "__main__":
     
     result = processor.process_content(
         test_html, 
-        "https://www.costco.com/recipe-spinach-lasagna-roll-ups", 
-        "recipe-spinach-lasagna-roll-ups-october-2023.html"
+        "https://www.costco.com/recipe-grape-crumble", 
+        "recipe-grape-crumble-september-2023.html"
     )
     
     if result:
         print(f"✅ Title: {result.content.title}")
         print(f"✅ Type: {result.content.content_type}")
-        print(f"✅ Image: {result.content.featured_image}")
+        print(f"✅ Ingredients: {len(result.content.ingredients)}")
         print(f"✅ Quality: {result.content_quality_score}")
     else:
         print("❌ Processing failed")

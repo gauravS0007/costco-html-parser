@@ -1,6 +1,6 @@
 """
-Simple Fixed Universal Content Extractor - No Syntax Errors
-Complete working version that addresses all the extraction issues
+FIXED: Universal Content Extractor with Section-Aware Recipe Extraction
+This fixes the critical recipe extraction issues identified.
 """
 
 import re
@@ -46,7 +46,7 @@ class ExtractedContent:
 
 
 class FixedUniversalContentExtractor:
-    """Fixed Universal content extractor with proper extraction"""
+    """FIXED: Universal content extractor with proper recipe section handling"""
     
     def __init__(self):
         # Content type detection patterns
@@ -115,9 +115,14 @@ class FixedUniversalContentExtractor:
         self._extract_text_content(main_content_area or cleaned_soup, extracted)
         self._extract_images(cleaned_soup, extracted, url)
         self._extract_structured_content(main_content_area or cleaned_soup, extracted)
-        self._extract_content_specific(main_content_area or cleaned_soup, extracted, content_type)
         
-        logger.info(f"✅ Extracted: {content_type} - {len(extracted.main_content)} paragraphs, {len(extracted.images)} images")
+        # FIXED: Enhanced recipe extraction with section awareness
+        if content_type == 'recipe':
+            self._extract_recipe_data_fixed(main_content_area or cleaned_soup, extracted)
+        else:
+            self._extract_content_specific(main_content_area or cleaned_soup, extracted, content_type)
+        
+        logger.info(f"✅ FIXED extraction: {content_type} - {len(extracted.main_content)} paragraphs, {len(extracted.images)} images")
         
         return extracted
 
@@ -296,10 +301,11 @@ class FixedUniversalContentExtractor:
             title_candidates.sort(key=lambda x: x[1], reverse=True)
             extracted.title = title_candidates[0][0]
         
-        # Byline extraction
+        # FIXED: Better byline extraction - don't generate fake bylines
         byline_patterns = [
             r'by\s+([^,\n\.]+)',
-            r'recipe\s+(?:and\s+photo\s+)?courtesy\s+of\s+([^,\n\.]+)'
+            r'recipe\s+(?:and\s+photo\s+)?courtesy\s+of\s+([^,\n\.]+)',
+            r'recipe\s+by\s+([^,\n\.]+)'
         ]
         
         full_text = soup.get_text()
@@ -307,6 +313,7 @@ class FixedUniversalContentExtractor:
             match = re.search(pattern, full_text, re.IGNORECASE)
             if match:
                 extracted.byline = f"By {match.group(1).strip()}"
+                logger.info(f"Found byline: {extracted.byline}")
                 break
 
     def _extract_text_content(self, content_area: Tag, extracted: ExtractedContent):
@@ -482,53 +489,331 @@ class FixedUniversalContentExtractor:
                     'class': ' '.join(list_elem.get('class', []))
                 })
 
-    def _extract_content_specific(self, content_area: Tag, extracted: ExtractedContent, content_type: str):
-        """Content-specific extraction"""
+    # ===== FIXED: RECIPE EXTRACTION WITH SECTION AWARENESS =====
+    
+    def _extract_recipe_data_fixed(self, content_area: Tag, extracted: ExtractedContent):
+        """FIXED: Extract recipe data with full section awareness"""
         
-        if content_type == 'recipe':
-            self._extract_recipe_data(content_area, extracted)
-        elif content_type == 'travel':
-            self._extract_travel_data(content_area, extracted)
-        elif content_type == 'member':
-            self._extract_member_data(content_area, extracted)
-
-    def _extract_recipe_data(self, content_area: Tag, extracted: ExtractedContent):
-        """Extract recipe-specific data"""
+        logger.info("🔧 Starting FIXED recipe extraction")
+        
+        # Step 1: Look for recipe sections
+        recipe_sections = self._find_recipe_sections(content_area)
         
         ingredients = []
         instructions = []
         
-        # Find ingredients in lists with measurements
-        measurement_units = ['cup', 'tablespoon', 'teaspoon', 'ounce', 'pound', 'gram']
-        
-        for list_data in extracted.lists:
-            has_measurements = any(
-                any(unit in item.lower() for unit in measurement_units)
-                for item in list_data['items']
-            )
+        if recipe_sections:
+            logger.info(f"Found recipe sections: {list(recipe_sections.keys())}")
             
-            if has_measurements:
+            # Extract from structured sections
+            for section_name, section_element in recipe_sections.items():
+                section_ingredients = self._extract_section_ingredients(section_element, section_name)
+                if section_ingredients:
+                    # Add section header for multi-section recipes
+                    if len(recipe_sections) > 1:
+                        ingredients.append(f"=== {section_name.upper()} ===")
+                    ingredients.extend(section_ingredients)
+                    
+            # Extract instructions with section awareness
+            instructions = self._extract_recipe_instructions(content_area, recipe_sections)
+            
+        else:
+            logger.info("No recipe sections found, using fallback extraction")
+            
+            # Fallback: use improved single-section extraction
+            ingredients, instructions = self._extract_single_section_recipe(content_area, extracted)
+        
+        # Extract timing and serving info
+        prep_time = self._extract_time_info(content_area, ['prep time', 'preparation', 'prep:'])
+        cook_time = self._extract_time_info(content_area, ['cook time', 'cooking time', 'bake', 'cook:', 'bake for'])
+        servings = self._extract_serving_info(content_area)
+        
+        # Store in metadata
+        extracted.metadata['ingredients'] = ingredients
+        extracted.metadata['instructions'] = instructions
+        extracted.metadata['prep_time'] = prep_time
+        extracted.metadata['cook_time'] = cook_time
+        extracted.metadata['servings'] = servings
+        
+        logger.info(f"✅ Recipe extracted: {len(ingredients)} ingredients, {len(instructions)} instructions")
+
+    def _find_recipe_sections(self, content_area: Tag) -> dict:
+        """Find recipe sections like FILLING, STREUSEL, CAKE"""
+        sections = {}
+        
+        # Look for section headers
+        section_keywords = ['FILLING', 'STREUSEL', 'CAKE', 'INGREDIENTS', 'DIRECTIONS', 'TOPPING']
+        
+        # Search in headings and strong text
+        for element in content_area.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'b']):
+            element_text = element.get_text().strip().upper()
+            
+            for keyword in section_keywords:
+                if keyword in element_text:
+                    # Find the content after this header
+                    section_content = self._get_content_after_header(element)
+                    if section_content:
+                        sections[keyword.lower()] = section_content
+                        logger.info(f"Found recipe section: {keyword}")
+                    break
+        
+        return sections
+
+    def _get_content_after_header(self, header_element: Tag) -> Optional[Tag]:
+        """Get content that follows a section header"""
+        
+        # Look for next sibling that contains a list
+        current = header_element.next_sibling
+        content_found = False
+        
+        # Create a container for the section content
+        section_content = BeautifulSoup('<div class="section-content"></div>', 'html.parser').div
+        
+        # Collect content until we hit another header or run out of siblings
+        while current:
+            if hasattr(current, 'name'):
+                # Stop if we hit another major header
+                if current.name in ['h1', 'h2', 'h3', 'h4'] and current != header_element:
+                    break
+                
+                # Include lists, paragraphs, and other content
+                if current.name in ['ul', 'ol', 'p', 'div']:
+                    section_content.append(current.extract())
+                    content_found = True
+                elif current.name in ['strong', 'b'] and any(keyword in current.get_text().upper() 
+                                                           for keyword in ['FILLING', 'STREUSEL', 'CAKE']):
+                    # Stop if we hit another section header
+                    break
+            
+            current = current.next_sibling
+        
+        return section_content if content_found else None
+
+    def _extract_section_ingredients(self, section_element: Tag, section_name: str) -> List[str]:
+        """Extract ingredients from a specific recipe section"""
+        ingredients = []
+        
+        # Look for lists in this section
+        for ul in section_element.find_all(['ul', 'ol']):
+            for li in ul.find_all('li'):
+                ingredient_text = li.get_text().strip()
+                if self._is_valid_ingredient(ingredient_text):
+                    ingredients.append(ingredient_text)
+                    
+        logger.info(f"Extracted {len(ingredients)} ingredients from {section_name} section")
+        return ingredients
+
+    def _extract_single_section_recipe(self, content_area: Tag, extracted: ExtractedContent) -> Tuple[List[str], List[str]]:
+        """Fallback extraction for simple single-section recipes"""
+        
+        ingredients = []
+        instructions = []
+        
+        # Use improved detection for ingredient lists
+        for list_data in extracted.lists:
+            if self._is_recipe_ingredient_list(list_data, content_area):
                 ingredients = list_data['items']
                 break
-        
-        # Find instructions (ordered lists or numbered content)
+                
+        # Extract instructions from ordered lists or paragraphs
         for list_data in extracted.lists:
-            if list_data['type'] == 'ordered' and list_data['items'] != ingredients:
+            if (list_data['type'] == 'ordered' and 
+                list_data['items'] != ingredients and
+                self._looks_like_instructions(list_data['items'])):
                 instructions = list_data['items']
                 break
         
-        # Extract timing info
-        full_text = content_area.get_text() if content_area else ""
+        # If no ordered list instructions, look in paragraphs
+        if not instructions:
+            instructions = self._extract_instructions_from_paragraphs(content_area)
+            
+        return ingredients, instructions
+
+    def _is_recipe_ingredient_list(self, list_data: dict, content_area: Tag) -> bool:
+        """IMPROVED: Better detection of recipe ingredient lists"""
+        items = list_data['items']
+        list_text = ' '.join(items).lower()
         
-        prep_time_match = re.search(r'prep\s*time[:\s]*(\d+(?:\s*-\s*\d+)?\s*(?:minutes?|mins?))', full_text, re.I)
-        cook_time_match = re.search(r'cook\s*time[:\s]*(\d+(?:\s*-\s*\d+)?\s*(?:minutes?|mins?))', full_text, re.I)
-        servings_match = re.search(r'(?:serves?|servings?)[:\s]*(\d+(?:\s*-\s*\d+)?)', full_text, re.I)
+        # Must have measurements
+        measurement_units = ['cup', 'cups', 'tablespoon', 'tbsp', 'teaspoon', 'tsp', 
+                            'ounce', 'oz', 'pound', 'lb', 'gram', 'kg', 'lbs']
+        has_measurements = any(unit in list_text for unit in measurement_units)
         
-        extracted.metadata['ingredients'] = ingredients
-        extracted.metadata['instructions'] = instructions
-        extracted.metadata['prep_time'] = prep_time_match.group(1) if prep_time_match else ""
-        extracted.metadata['cook_time'] = cook_time_match.group(1) if cook_time_match else ""
-        extracted.metadata['servings'] = servings_match.group(1) if servings_match else ""
+        if not has_measurements:
+            return False
+        
+        # Should have multiple ingredients
+        if len(items) < 2:
+            return False
+        
+        # Should not be navigation
+        nav_indicators = ['shop', 'compare', 'add to cart', 'department', 'view all']
+        if any(nav in list_text for nav in nav_indicators):
+            return False
+        
+        # Validate ingredients make culinary sense
+        food_indicators = ['salt', 'sugar', 'flour', 'butter', 'egg', 'oil', 'milk', 
+                          'cheese', 'tomato', 'onion', 'garlic', 'pepper', 'vanilla',
+                          'cinnamon', 'grape', 'water', 'lemon', 'vinegar']
+        has_food_terms = any(food in list_text for food in food_indicators)
+        
+        # Additional validation: check for fractions or measurements
+        has_fractions = any(frac in list_text for frac in ['½', '¼', '¾', '⅓', '⅔'])
+        has_numbers = any(char.isdigit() for char in list_text)
+        
+        return (has_food_terms or has_fractions) and has_numbers
+
+    def _is_valid_ingredient(self, text: str) -> bool:
+        """Validate that text looks like a real ingredient"""
+        if len(text) < 3:
+            return False
+        
+        # Should not be navigation
+        nav_terms = ['shop', 'compare', 'add to cart', 'view all', 'department']
+        if any(nav in text.lower() for nav in nav_terms):
+            return False
+        
+        # Should have quantity or be recognizable ingredient
+        has_quantity = any(char.isdigit() for char in text)
+        has_fraction = any(frac in text for frac in ['½', '¼', '¾', '⅓', '⅔'])
+        common_ingredients = ['salt', 'pepper', 'vanilla', 'cinnamon']
+        is_common = any(ing in text.lower() for ing in common_ingredients)
+        
+        return has_quantity or has_fraction or is_common
+
+    def _looks_like_instructions(self, items: List[str]) -> bool:
+        """Check if list items look like cooking instructions"""
+        
+        if len(items) < 2:
+            return False
+            
+        cooking_verbs = ['preheat', 'heat', 'cook', 'bake', 'mix', 'stir', 'add', 'combine', 
+                        'place', 'put', 'pour', 'slice', 'chop', 'dice', 'blend', 'whisk',
+                        'season', 'serve', 'garnish', 'remove', 'drain', 'cover', 'simmer',
+                        'boil', 'bring', 'reduce', 'cool', 'refrigerate']
+        
+        instruction_count = 0
+        for item in items:
+            if any(verb in item.lower() for verb in cooking_verbs):
+                instruction_count += 1
+                
+        # At least half the items should contain cooking verbs
+        return instruction_count >= len(items) // 2
+
+    def _extract_recipe_instructions(self, content_area: Tag, recipe_sections: dict) -> List[str]:
+        """Extract cooking instructions with section awareness"""
+        
+        instructions = []
+        
+        # Look for instructions in recipe sections first
+        if recipe_sections:
+            for section_name, section_element in recipe_sections.items():
+                section_instructions = self._extract_instructions_from_element(section_element)
+                if section_instructions:
+                    if len(recipe_sections) > 1:
+                        instructions.append(f"=== {section_name.upper()} PREPARATION ===")
+                    instructions.extend(section_instructions)
+        else:
+            # Fallback to general instruction extraction
+            instructions = self._extract_instructions_from_element(content_area)
+            
+        return instructions
+
+    def _extract_instructions_from_element(self, element: Tag) -> List[str]:
+        """Extract instructions from a specific element"""
+        
+        instructions = []
+        cooking_verbs = ['preheat', 'heat', 'cook', 'bake', 'mix', 'stir', 'add', 'combine', 
+                        'place', 'put', 'pour', 'slice', 'chop', 'dice', 'blend', 'whisk',
+                        'season', 'serve', 'garnish', 'remove', 'drain', 'cover', 'simmer']
+        
+        # Strategy 1: Ordered lists with cooking verbs
+        for ol in element.find_all('ol'):
+            ol_instructions = []
+            for li in ol.find_all('li'):
+                text = li.get_text().strip()
+                if (any(verb in text.lower() for verb in cooking_verbs) and 
+                    len(text) > 15 and len(text.split()) > 3):
+                    ol_instructions.append(text)
+            
+            if len(ol_instructions) > 1:
+                instructions = ol_instructions
+                break
+        
+        # Strategy 2: Paragraphs with cooking instructions
+        if not instructions:
+            for p in element.find_all('p'):
+                text = p.get_text().strip()
+                if (any(verb in text.lower() for verb in cooking_verbs) and 
+                    len(text) > 20 and len(text.split()) > 5):
+                    instructions.append(text)
+        
+        return instructions
+
+    def _extract_instructions_from_paragraphs(self, content_area: Tag) -> List[str]:
+        """Extract instructions from paragraphs when no ordered lists found"""
+        
+        instructions = []
+        cooking_verbs = ['preheat', 'heat', 'cook', 'bake', 'mix', 'stir', 'add', 'combine', 
+                        'place', 'put', 'pour', 'slice', 'chop', 'dice', 'blend', 'whisk',
+                        'season', 'serve', 'garnish', 'remove', 'drain', 'cover', 'simmer',
+                        'boil', 'bring', 'reduce', 'cool', 'refrigerate', 'prepare']
+        
+        for p in content_area.find_all('p'):
+            text = p.get_text().strip()
+            
+            # Look for instruction-like paragraphs
+            if (any(verb in text.lower() for verb in cooking_verbs) and 
+                len(text) > 30 and len(text.split()) > 8):
+                
+                # Skip navigation-like text
+                if not any(nav in text.lower() for nav in ['shop', 'compare', 'add to cart']):
+                    instructions.append(text)
+        
+        return instructions
+
+    def _extract_time_info(self, content_area: Tag, time_indicators: List[str]) -> str:
+        """Extract time information from text"""
+        text = content_area.get_text().lower()
+        
+        for indicator in time_indicators:
+            # Look for patterns like "prep time: 30 minutes" or "bake for 50 minutes"
+            patterns = [
+                rf'{indicator}[:\s]*(\d+(?:\s*-\s*\d+)?\s*(?:minutes?|mins?|hours?|hrs?))',
+                rf'{indicator}\s+(\d+(?:\s*-\s*\d+)?\s*(?:minutes?|mins?|hours?|hrs?))'
+            ]
+            
+            for pattern in patterns:
+                match = re.search(pattern, text)
+                if match:
+                    return match.group(1).strip()
+        
+        return ""
+
+    def _extract_serving_info(self, content_area: Tag) -> str:
+        """Extract serving information"""
+        text = content_area.get_text().lower()
+        
+        serving_patterns = [
+            r'(?:serves|servings?)[:\s]*(\d+(?:\s*-\s*\d+)?)',
+            r'makes\s+(\d+(?:\s*-\s*\d+)?\s*(?:servings?|portions?))',
+            r'makes\s+about\s+(\d+(?:\s*to\s*\d+)?\s*(?:cups?|servings?))'
+        ]
+        
+        for pattern in serving_patterns:
+            match = re.search(pattern, text)
+            if match:
+                return match.group(1).strip()
+        
+        return ""
+
+    def _extract_content_specific(self, content_area: Tag, extracted: ExtractedContent, content_type: str):
+        """Content-specific extraction for non-recipe types"""
+        
+        if content_type == 'travel':
+            self._extract_travel_data(content_area, extracted)
+        elif content_type == 'member':
+            self._extract_member_data(content_area, extracted)
 
     def _extract_travel_data(self, content_area: Tag, extracted: ExtractedContent):
         """Extract travel-specific data"""
@@ -583,9 +868,46 @@ class FixedUniversalContentExtractor:
         
         return len(intersection) / len(union) if union else 0.0
 
+    # ===== DEBUG HELPER =====
+    
+    def debug_recipe_extraction(self, html_content: str, url: str):
+        """Debug helper to see what's being extracted"""
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        print("=== DEBUG: FIXED Recipe Extraction ===")
+        print(f"URL: {url}")
+        
+        # Find all lists
+        all_lists = soup.find_all(['ul', 'ol'])
+        print(f"Found {len(all_lists)} lists total")
+        
+        for i, ul in enumerate(all_lists):
+            items = [li.get_text().strip() for li in ul.find_all('li')]
+            list_text = ' '.join(items).lower()
+            
+            has_measurements = any(unit in list_text for unit in 
+                                 ['cup', 'tablespoon', 'teaspoon', 'ounce', 'pound'])
+            
+            print(f"\nList {i} (has_measurements: {has_measurements}):")
+            for item in items[:3]:  # Show first 3 items
+                print(f"  - {item}")
+            if len(items) > 3:
+                print(f"  ... and {len(items)-3} more")
+        
+        # Look for section headers
+        headers = soup.find_all(['h1', 'h2', 'h3', 'h4', 'strong', 'b'])
+        recipe_headers = []
+        for header in headers:
+            header_text = header.get_text().strip().upper()
+            if any(section in header_text for section in ['FILLING', 'STREUSEL', 'CAKE', 'INGREDIENTS']):
+                recipe_headers.append(header_text)
+        
+        print(f"\nRecipe section headers found: {recipe_headers}")
+        print("=== END DEBUG ===")
+
 
 # Main extraction function
 def extract_content_from_html_fixed(html_content: str, url: str) -> ExtractedContent:
-    """Main function to extract content"""
+    """Main function to extract content with FIXED recipe handling"""
     extractor = FixedUniversalContentExtractor()
     return extractor.extract_all_content(html_content, url)

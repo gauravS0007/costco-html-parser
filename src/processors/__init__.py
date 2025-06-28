@@ -13,6 +13,7 @@ from .enhanced_html_processor import EnhancedHTMLProcessor
 
 # FIXED: Super enhanced processor
 from .super_enhanced_costco_processor import FixedSuperEnhancedCostcoProcessor
+from .super_enhanced_costco_processor import FixedSuperEnhancedCostcoProcessor
 
 __all__ = [
     # Original processors
