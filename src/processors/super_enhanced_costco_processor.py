@@ -329,23 +329,70 @@ class FixedSuperEnhancedCostcoProcessor:
         )
 
     def _build_member_schema_fixed(self, extracted: ExtractedContent, base_data: dict) -> MemberContent:
-        """FIXED: Member content extraction"""
-        
-        poll_questions = extracted.metadata.get('poll_questions', [])
+        """FIXED: Member content extraction with clean data"""
+    
+        # Get clean member data from metadata
         member_comments = extracted.metadata.get('member_comments', [])
-        
-        # Extract poll results if available
+        poll_questions = extracted.metadata.get('poll_questions', [])
+        member_responses = extracted.metadata.get('member_responses', [])
+    
+        # Build poll results from member responses
         poll_results = {}
-        for content in extracted.main_content:
-            if '%' in content or 'percent' in content.lower():
-                poll_results['response'] = content
-        
+        if member_responses:
+            poll_results = {
+            'total_responses': len(member_responses),
+            'sample_responses': [resp['response'][:100] + '...' for resp in member_responses[:3]]
+           }
+    
+        # Extract member stories from responses
+        member_stories = []
+        for response in member_responses:
+            member_stories.append(f"{response['name']}: {response['response']}")
+    
+        # Clean member comments (remove any remaining HTML/navigation)
+        clean_comments = []
+        for comment in member_comments:
+            if (len(comment) > 20 and 
+               not self._is_navigation_text_member(comment)):
+               clean_comments.append(comment)
+    
+        logger.info(f"Member extraction: {len(clean_comments)} comments, {len(poll_questions)} questions, {len(member_responses)} responses")
+    
         return MemberContent(
             **base_data,
-            poll_questions=poll_questions[:3],
-            member_comments=member_comments[:5],
-            poll_results=poll_results
-        )
+            poll_questions=poll_questions,
+            member_comments=clean_comments[:5],
+            poll_results=poll_results,
+            member_stories=member_stories[:8],
+            member_spotlights=member_responses[:3]  # Use top responses as spotlights
+       )
+
+    def _is_navigation_text_member(self, text: str) -> bool:
+        """Check if text is navigation/HTML content for member pages"""
+    
+        # Common member page navigation patterns
+        nav_patterns = [
+           'home\n\n\n', 'costco connection', 'member poll', 'member comments',
+           'follow us on', 'talk to us', 'advertising and products',
+           'facebook.com/costco', 'connection@costco.com'
+        ]
+    
+        text_lower = text.lower()
+    
+        # Check for navigation patterns
+        for pattern in nav_patterns:
+            if pattern in text_lower:
+                return True
+    
+        # Check for excessive whitespace/newlines (HTML artifacts)
+        if text.count('\n') > 10 and len(text.strip().split()) < 20:
+            return True
+    
+        # Check for HTML-like content
+        if re.search(r'\\t\\t\\t', text) or text.count('\\n') > 5:
+            return True
+    
+        return False
 
     def _enhance_with_ai_conservative(self, content_schema, extracted_content: ExtractedContent, 
                                      content_type: ContentType, url: str, filename: str):
@@ -503,6 +550,24 @@ Instructions: {len(current_instructions)} found
                     if (not current_value and field in ai_result and ai_result[field]):
                         setattr(content_schema, field, ai_result[field])
 
+            elif content_type == ContentType.MEMBER:
+                # CONSERVATIVE: Only add if extraction missed something
+                # Poll questions - only if we have none or very few
+                if (len(getattr(content_schema, 'poll_questions', [])) < 1 and 
+                   'poll_questions' in ai_result and ai_result['poll_questions']):
+                    content_schema.poll_questions = ai_result['poll_questions'][:3]
+            
+                # Member comments - only if extraction was poor
+                if (len(getattr(content_schema, 'member_comments', [])) < 2 and 
+                   'member_comments' in ai_result and ai_result['member_comments']):
+                    # Validate AI comments are clean
+                    clean_ai_comments = []
+                    for comment in ai_result['member_comments']:
+                        if (len(comment) > 20 and 
+                            not self._is_navigation_text_member(comment)):
+                            clean_ai_comments.append(comment)
+                    content_schema.member_comments = clean_ai_comments[:5]
+        
             return content_schema
 
         except Exception as e:
