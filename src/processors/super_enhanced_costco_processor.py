@@ -341,7 +341,7 @@ class FixedSuperEnhancedCostcoProcessor:
         if member_responses:
             poll_results = {
             'total_responses': len(member_responses),
-            'sample_responses': [resp['response'][:100] + '...' for resp in member_responses[:3]]
+            'sample_responses': [resp['response'][:100] + '...' for resp in member_responses[:7]]
            }
     
         # Extract member stories from responses
@@ -361,10 +361,10 @@ class FixedSuperEnhancedCostcoProcessor:
         return MemberContent(
             **base_data,
             poll_questions=poll_questions,
-            member_comments=clean_comments[:5],
+            member_comments=clean_comments[:12],
             poll_results=poll_results,
-            member_stories=member_stories[:8],
-            member_spotlights=member_responses[:3]  # Use top responses as spotlights
+            member_stories=member_stories[:15],
+            member_spotlights=member_responses[:8]  # Use top responses as spotlights
        )
 
     def _is_navigation_text_member(self, text: str) -> bool:

@@ -184,7 +184,7 @@ class FixedUniversalContentExtractor:
         return soup
 
     def _find_main_content(self, soup: BeautifulSoup) -> Optional[Tag]:
-        """Find main content area"""
+        """Find main content area with enhanced comprehensive detection"""
 
         candidates = []
 
@@ -199,7 +199,7 @@ class FixedUniversalContentExtractor:
         # Try content selectors
         selectors = [
             ".article-content",
-            ".post-content",
+            ".post-content", 
             ".entry-content",
             ".main-content",
             ".content-area",
@@ -1327,15 +1327,24 @@ class FixedUniversalContentExtractor:
                     break
 
                 # Collect lyrics content
-                elif current.name in ["p", "div", "em", "i"]:
-                    text = current.get_text().strip()
-                    if text and self._looks_like_song_lyrics(text):
-                        lyrics_parts.append(text)
-                    elif (
-                        text and len(text) < 100 and not self._is_navigation_text(text)
-                    ):
-                        # Short lines might be part of lyrics
-                        lyrics_parts.append(text)
+                elif current.name in ["p", "div", "em", "i", "ul", "ol"]:
+                    # Special handling for lists (like lyrics in <ul><li> structure)
+                    if current.name in ["ul", "ol"]:
+                        for li in current.find_all("li"):
+                            li_text = li.get_text().strip()
+                            if li_text and len(li_text) > 5:
+                                # Clean up HTML artifacts like <br> tags
+                                li_text = re.sub(r'\s+', ' ', li_text)
+                                lyrics_parts.append(li_text)
+                    else:
+                        text = current.get_text().strip()
+                        if text and self._looks_like_song_lyrics(text):
+                            lyrics_parts.append(text)
+                        elif (
+                            text and len(text) < 100 and not self._is_navigation_text(text)
+                        ):
+                            # Short lines might be part of lyrics
+                            lyrics_parts.append(text)
 
             elif isinstance(current, str):
                 text = current.strip()
@@ -1768,13 +1777,13 @@ class FixedUniversalContentExtractor:
         """Dynamic member name detection without hardcoding"""
 
         # Basic checks
-        if not text or len(text) > 60:  # Too long to be a name
+        if not text or len(text) > 100:  # Too long to be a name
             return False
 
         words = text.split()
 
         # Should be 2-4 words
-        if len(words) < 2 or len(words) > 4:
+        if len(words) < 2 or len(words) > 6:
             return False
 
         # Check if all words could be names
@@ -1877,7 +1886,7 @@ class FixedUniversalContentExtractor:
 
         # Allow some business words but not if it's mostly business talk
         word_count = len(text.split())
-        if word_count > 0 and (business_count / word_count) > 0.3:
+        if word_count > 0 and (business_count / word_count) > 0.5:
             return False
 
         return True
