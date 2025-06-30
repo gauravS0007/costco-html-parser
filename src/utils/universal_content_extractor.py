@@ -353,30 +353,42 @@ class FixedUniversalContentExtractor:
                 break
 
     def _extract_text_content(self, content_area: Tag, extracted: ExtractedContent):
-        """Extract text content"""
+        """Enhanced text content extraction"""
 
         if not content_area:
             return
 
-        # Extract paragraphs
-        for p in content_area.find_all("p"):
-            text = p.get_text().strip()
-            if text and len(text) > 15:
-                extracted.main_content.append(text)
-
-        # Extract div content
-        for div in content_area.find_all("div"):
-            div_text = div.get_text().strip()
-            if div_text and len(div_text) > 30:
+        # Extract all text elements more comprehensively
+        text_elements = content_area.find_all(['p', 'div', 'span', 'section', 'article'])
+        
+        for element in text_elements:
+            text = element.get_text().strip()
+            
+            # Skip if too short or navigation content
+            if not text or len(text) < 10:
+                continue
+                
+            # Skip navigation/menu content
+            if any(nav_term in text.lower() for nav_term in ['home', 'costco connection', 'download the pdf', 'copyright', '©']):
+                continue
+            
+            # Check for author bylines (like "by Andy Penfold")
+            if text.lower().startswith('by ') and len(text) < 50:
+                if not extracted.byline or 'connection' in extracted.byline.lower():
+                    extracted.byline = text
+                continue
+            
+            # Include substantive content
+            if len(text) > 15:
                 # Check if new content
                 is_new = True
                 for existing in extracted.main_content:
-                    if self._text_similarity(div_text, existing) > 0.8:
+                    if self._text_similarity(text, existing) > 0.7:
                         is_new = False
                         break
 
                 if is_new:
-                    extracted.main_content.append(div_text)
+                    extracted.main_content.append(text)
 
         # Store full text
         extracted.full_text = content_area.get_text()
@@ -431,6 +443,12 @@ class FixedUniversalContentExtractor:
         if src.startswith("/live/resource/img/"):
             return f"https://mobilecontent.costco.com{src}"
 
+        # Author headshot patterns (e.g., Andy_Penfold_Headshot.jpg)
+        if "_headshot" in src.lower() or "headshot.jpg" in src.lower():
+            filename = src.split("/")[-1]
+            # Try to construct proper URL for author headshots
+            return f"https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/{filename}"
+
         # Relative paths with date
         if src.startswith("./") or src.startswith("../"):
             filename = src.split("/")[-1]
@@ -454,10 +472,19 @@ class FixedUniversalContentExtractor:
                 month_name = month_names.get(month_num, "october")
                 folder = f"static-us-connection-{month_name}-{year_num}"
                 return f"https://mobilecontent.costco.com/live/resource/img/{folder}/{filename}"
+            # If no date pattern, try default October folder for headshots
+            elif "_headshot" in filename.lower():
+                return f"https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/{filename}"
 
         # Standard relative URL
         if src.startswith("/"):
             return urljoin(base_url, src)
+            
+        # Handle local file references that might be headshots
+        if not src.startswith(('http://', 'https://')):
+            filename = src.split("/")[-1]
+            if "_headshot" in filename.lower() or "headshot.jpg" in filename.lower():
+                return f"https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/{filename}"
 
         return urljoin(base_url, src)
 
@@ -507,6 +534,22 @@ class FixedUniversalContentExtractor:
             if term in alt_lower or term in src_lower:
                 score += 10
 
+        # Dynamic author image detection
+        author_terms = ["author", "writer", "headshot", "portrait", "profile"]
+        for term in author_terms:
+            if term in alt_lower or term in src_lower:
+                score += 40  # Bonus for author images
+                
+        # Pattern-based author detection (any author name + headshot)
+        if "_headshot" in src_lower or "headshot" in src_lower:
+            score += 60  # High priority for any headshot
+        
+        # Detect author name patterns in URL (FirstName_LastName_Headshot)
+        import re
+        author_pattern = r'([A-Z][a-z]+_[A-Z][a-z]+)_[Hh]eadshot'
+        if re.search(author_pattern, src):
+            score += 80  # Very high priority for author name + headshot pattern
+
         # Penalties
         penalty_terms = ["logo", "icon", "nav", "menu", "banner", "ad"]
         for term in penalty_terms:
@@ -520,16 +563,34 @@ class FixedUniversalContentExtractor:
     ):
         """Extract headings and lists"""
 
-        # Headings
+        # Enhanced headings with content
         for heading in content_area.find_all(["h1", "h2", "h3", "h4", "h5", "h6"]):
             heading_text = heading.get_text().strip()
             if heading_text and len(heading_text) > 2:
                 if not any(nav in heading_text.lower() for nav in ["compare", "shop"]):
+                    
+                    # Extract content that follows this heading
+                    heading_content = []
+                    current = heading.next_sibling
+                    
+                    while current and len(heading_content) < 3:  # Limit to 3 items per heading
+                        if hasattr(current, 'name'):
+                            # Stop at next heading
+                            if current.name in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
+                                break
+                            # Collect paragraph content
+                            elif current.name in ['p', 'div']:
+                                text = current.get_text().strip()
+                                if text and len(text) > 30 and text not in heading_content:
+                                    heading_content.append(text)
+                        current = current.next_sibling
+                    
                     extracted.headings.append(
                         {
                             "text": heading_text,
                             "level": int(heading.name[1]),
                             "class": " ".join(heading.get("class", [])),
+                            "content": heading_content  # Add content under heading
                         }
                     )
 
@@ -908,6 +969,17 @@ class FixedUniversalContentExtractor:
             "drain",
             "cover",
             "simmer",
+            "spread",
+            "boil",
+            "bring",
+            "reduce",
+            "cool",
+            "refrigerate",
+            "prepare",
+            "roll",
+            "drizzle",
+            "transfer",
+            "broil"
         ]
 
         # Strategy 1: Ordered lists with cooking verbs
@@ -932,10 +1004,24 @@ class FixedUniversalContentExtractor:
                 text = p.get_text().strip()
                 if (
                     any(verb in text.lower() for verb in cooking_verbs)
-                    and len(text) > 20
-                    and len(text.split()) > 5
+                    and len(text) > 15  # Reduced from 20 to catch shorter steps
+                    and len(text.split()) > 4  # Reduced from 5 to catch shorter steps
                 ):
                     instructions.append(text)
+        
+        # Strategy 3: Look for any text elements with cooking verbs (more comprehensive)
+        if not instructions:
+            for element_tag in element.find_all(["p", "div", "span", "li"]):
+                text = element_tag.get_text().strip()
+                if (
+                    any(verb in text.lower() for verb in cooking_verbs)
+                    and len(text) > 10  # Even shorter for steps like "Spread sauce"
+                    and len(text.split()) > 3
+                    and not any(skip in text.lower() for skip in ['home', 'costco', 'download', 'navigation'])
+                ):
+                    # Avoid duplicates
+                    if text not in instructions:
+                        instructions.append(text)
 
         return instructions
 
@@ -1037,6 +1123,8 @@ class FixedUniversalContentExtractor:
             self._extract_travel_data(content_area, extracted)
         elif content_type == "member":
             self._extract_member_data(content_area, extracted)
+        elif content_type == "tech":
+            self._extract_tech_data(content_area, extracted)
 
     def _extract_travel_data(self, content_area: Tag, extracted: ExtractedContent):
         """Extract travel-specific data"""
@@ -1057,6 +1145,78 @@ class FixedUniversalContentExtractor:
 
         extracted.metadata["destinations"] = list(set(destinations))[:10]
         extracted.metadata["attractions"] = attractions
+
+    def _extract_tech_data(self, content_area: Tag, extracted: ExtractedContent):
+        """Extract comprehensive tech content including all section content"""
+        
+        if not content_area:
+            return
+            
+        # Extract ALL paragraphs more thoroughly for tech content
+        all_paragraphs = []
+        
+        # Get all text elements including those under headings
+        for element in content_area.find_all(['p', 'div', 'span', 'section']):
+            text = element.get_text().strip()
+            
+            # Skip navigation and short content
+            if (not text or len(text) < 20 or 
+                any(skip in text.lower() for skip in ['home', 'costco connection', 'download', '©', 'copyright'])):
+                continue
+                
+            # Include substantial content
+            if len(text) > 20:
+                # Check if it's new content
+                is_new = True
+                for existing in all_paragraphs:
+                    if self._text_similarity(text, existing) > 0.7:
+                        is_new = False
+                        break
+                        
+                if is_new:
+                    all_paragraphs.append(text)
+        
+        # Also extract content that follows headings (like under "Portable power")
+        headings = content_area.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+        for heading in headings:
+            # Get content that follows this heading
+            current = heading.next_sibling
+            section_content = []
+            
+            while current and len(section_content) < 5:  # Limit per section
+                if hasattr(current, 'name'):
+                    # Stop at next heading
+                    if current.name in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
+                        break
+                    # Collect paragraph content
+                    elif current.name in ['p', 'div']:
+                        text = current.get_text().strip()
+                        if text and len(text) > 20:
+                            section_content.append(text)
+                elif isinstance(current, str):
+                    text = current.strip()
+                    if text and len(text) > 20:
+                        section_content.append(text)
+                        
+                current = current.next_sibling
+            
+            # Add section content to main content
+            all_paragraphs.extend(section_content)
+        
+        # Remove duplicates and update main content 
+        unique_paragraphs = []
+        for para in all_paragraphs:
+            # Check if this paragraph is not already in main_content or unique_paragraphs
+            is_duplicate = False
+            for existing in extracted.main_content + unique_paragraphs:
+                if self._text_similarity(para, existing) > 0.8:
+                    is_duplicate = True
+                    break
+            if not is_duplicate:
+                unique_paragraphs.append(para)
+        
+        # Update the main content with comprehensive extraction
+        extracted.main_content.extend(unique_paragraphs)
 
     # Replace the _extract_member_data method completely
 

@@ -52,6 +52,9 @@ class RecipeContent(BaseContent):
     recipe_author: str = ""
     nutritional_info: Dict[str, str] = field(default_factory=dict)
     equipment_needed: List[str] = field(default_factory=list)
+    
+    # Brand information
+    brand_images: List[Dict[str, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -77,19 +80,33 @@ class TravelContent(BaseContent):
 
 @dataclass
 class TechContent(BaseContent):
-    """Tech/product review content schema."""
+    """Enhanced tech content schema matching target structure."""
     content_type: ContentType = ContentType.TECH
     
-    # Tech specifics  
+    # Article metadata
+    section_label: str = ""
+    subheadline: str = ""
+    publication: str = "Costco Connection"
+    
+    # Hero image with full details
+    hero_image: Dict[str, str] = field(default_factory=dict)
+    
+    # Enhanced author object
+    author: Dict[str, Union[str, Dict[str, str]]] = field(default_factory=dict)
+    
+    # Introduction paragraph
+    intro_paragraph: str = ""
+    
+    # Callouts for supplementary content
+    callouts: List[Dict[str, Union[str, List[str]]]] = field(default_factory=list)
+    
+    # Topic tags
+    tags: List[str] = field(default_factory=list)
+    
+    # Legacy fields for backward compatibility
     products: List[str] = field(default_factory=list)
     brands: List[str] = field(default_factory=list)
     features: List[str] = field(default_factory=list)
-    pros_and_cons: Dict[str, List[str]] = field(default_factory=dict)
-    
-    # Product info
-    price_range: str = ""
-    availability: str = ""
-    specifications: Dict[str, str] = field(default_factory=dict)
     buying_guide: List[str] = field(default_factory=list)
 
 
