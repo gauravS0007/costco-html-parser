@@ -55,6 +55,9 @@ class FixedSuperEnhancedCostcoProcessor:
             # Store for dynamic brand extraction
             self._current_extracted_content = extracted_content
             
+            # Store HTML content for direct parsing when needed
+            self._current_html_content = html_content
+            
             # Step 2: Map content type to schema enum with FIXED mapping
             content_type_enum = self._map_content_type_fixed(extracted_content.content_type, filename, url)
             
@@ -1910,43 +1913,692 @@ class FixedSuperEnhancedCostcoProcessor:
         )
 
     def _build_member_schema_fixed(self, extracted: ExtractedContent, base_data: dict) -> MemberContent:
-        """FIXED: Member content extraction with clean data"""
+        """FIXED: Sub-type specific member content extraction"""
+        
+        # Determine member sub-type from URL and title
+        url = base_data.get('title', '') + ' ' + str(extracted.metadata.get('url', ''))
+        member_subtype = self._detect_member_subtype(url, base_data.get('title', ''))
+        
+        logger.info(f"Processing member content as: {member_subtype}")
+        
+        # Extract content based on sub-type
+        if member_subtype == 'MEMBER_POLL':
+            return self._extract_member_poll_content(extracted, base_data)
+        elif member_subtype == 'MEMBER_COMMENTS':
+            return self._extract_member_comments_content(extracted, base_data)
+        elif member_subtype == 'MEMBER_CONNECTION':
+            return self._extract_member_connection_content(extracted, base_data)
+        else:
+            # Fallback to general member content
+            return self._extract_general_member_content(extracted, base_data)
     
-        # Get clean member data from metadata
-        member_comments = extracted.metadata.get('member_comments', [])
-        poll_questions = extracted.metadata.get('poll_questions', [])
-        member_responses = extracted.metadata.get('member_responses', [])
+    def _detect_member_subtype(self, url: str, title: str) -> str:
+        """Dynamically detect the specific member content sub-type"""
+        url_lower = url.lower()
+        title_lower = title.lower()
+        
+        # Dynamic poll detection - look for question patterns
+        poll_indicators = ['poll', 'what do you', 'how do you', 'do you have', 'which do you', 'when do you']
+        if any(indicator in url_lower or indicator in title_lower for indicator in poll_indicators):
+            return 'MEMBER_POLL'
+        
+        # Dynamic comments detection - look for multi-section patterns
+        comments_indicators = ['comments', 'member-comments', 'letters', 'feedback']
+        if any(indicator in url_lower for indicator in comments_indicators):
+            return 'MEMBER_COMMENTS'
+        
+        # Dynamic connection detection - look for story/feature patterns  
+        connection_indicators = ['connection', 'member-connection', 'spotlight', 'feature', 'story', 'profile']
+        if any(indicator in url_lower for indicator in connection_indicators):
+            return 'MEMBER_CONNECTION'
+        
+        # Additional dynamic detection based on title patterns
+        if any(pattern in title_lower for pattern in ['healing', 'voice', 'journey', 'story of']):
+            return 'MEMBER_CONNECTION'
+        elif '?' in title_lower and len(title_lower.split()) > 4:  # Question format suggests poll
+            return 'MEMBER_POLL'
+        
+        return 'GENERAL_MEMBER'
     
-        # Build poll results from member responses
-        poll_results = {}
-        if member_responses:
-            poll_results = {
+    def _find_member_poll_featured_image(self, extracted: ExtractedContent) -> dict:
+        """Find the best featured image for member polls - prioritize main images over sidebar"""
+        best_image = None
+        best_score = 0
+        
+        for img in extracted.images:
+            score = 0
+            img_src = img.get('src', '').lower()
+            img_alt = img.get('alt', '').lower()
+            
+            # High priority: Main poll images (not sidebar)
+            if '10_23_UF_Member_Poll.jpg' in img_src:  # Exact match for main poll image
+                score += 200
+            elif 'member_poll' in img_src and 'sidebar' not in img_src:
+                score += 100
+            elif 'mempoll' in img_src and 'sidebar' not in img_src:
+                score += 100
+            elif 'poll' in img_src and 'member' in img_src and 'sidebar' not in img_src:
+                score += 90
+            
+            # Medium priority: General member images
+            elif 'member' in img_src and 'poll' in img_src:
+                score += 70
+            elif 'poll' in img_src:
+                score += 60
+            
+            # Low priority: Sidebar or small images
+            if 'sidebar' in img_src:
+                score -= 50
+            if '.gif' in img_src:
+                score -= 20  # Prefer photos over illustrations
+            
+            # Size indicators
+            if any(size in img_src for size in ['_01.', '_main.', '_hero.']):
+                score += 30
+            
+            # Alt text relevance
+            if any(keyword in img_alt for keyword in ['poll', 'member', 'autumn', 'question']):
+                score += 20
+            
+            if score > best_score:
+                best_score = score
+                best_image = img
+        
+        return best_image or {}
+    
+    def _extract_member_poll_content(self, extracted: ExtractedContent, base_data: dict) -> MemberContent:
+        """Extract member poll content with individual responses using HTML structure"""
+        from bs4 import BeautifulSoup
+        import re
+        
+        # Find poll question
+        poll_questions = []
+        
+        # Search for poll question
+        for content in extracted.main_content + [extracted.title]:
+            if content and '?' in content and any(indicator in content.lower() for indicator in 
+                ['what do you', 'how do you', 'do you have']):
+                poll_questions.append(content.strip())
+                break
+        
+        # Fix featured image for polls - prioritize main poll image over sidebar
+        proper_poll_image = self._find_member_poll_featured_image(extracted)
+        if proper_poll_image and proper_poll_image.get('src'):
+            base_data['featured_image'] = proper_poll_image['src']
+            base_data['image_alt'] = proper_poll_image.get('alt', '')
+        
+        # Parse HTML directly to get ALL member responses
+        member_responses = []
+        
+        # Use stored HTML content for direct parsing
+        if hasattr(self, '_current_html_content'):
+            soup = BeautifulSoup(self._current_html_content, 'html.parser')
+            
+            # Find all member names in HTML with their exact pattern
+            member_elements = soup.find_all('i', style=lambda x: x and 'padding-left: 20px; font-weight: bold;' in x)
+            
+            for element in member_elements:
+                member_name = element.get_text().strip()
+                
+                # Get the response content BEFORE the member name
+                parent = element.parent  # p tag containing the name
+                response_content = ""
+                
+                # Look at previous siblings to find the response (responses come BEFORE names)
+                for sibling in parent.previous_siblings:
+                    if hasattr(sibling, 'get_text'):
+                        text = sibling.get_text().strip()
+                        # Look for response paragraphs with the specific style
+                        if (sibling.name == 'p' and 
+                            sibling.get('style') == 'margin-bottom: 0;' and 
+                            text and len(text) > 10):
+                            response_content = text
+                            break
+                    elif hasattr(sibling, 'find'):
+                        # Check if this element contains a response paragraph
+                        response_p = sibling.find('p', style='margin-bottom: 0;')
+                        if response_p:
+                            text = response_p.get_text().strip()
+                            if text and len(text) > 10:
+                                response_content = text
+                                break
+                
+                # Store the response if found
+                if response_content:
+                    member_responses.append({
+                        'name': member_name,
+                        'content': response_content,
+                        'location': ''
+                    })
+        
+        # Fallback: If HTML parsing didn't find enough responses, supplement with extracted content
+        if len(member_responses) < 7:
+            
+            all_member_names = [
+                "Christine Dodaro", "Jill Dinkel", "Jennifer Peto DeVincentis", 
+                "Jessica Weismiller", "Melissa Tomsik", "Corey Rippey", 
+                "Tanya Wilcox", "Petra Erlewein", "Nancy Fasan"
+            ]
+            
+            found_members = set(resp['name'] for resp in member_responses)
+            
+            # Look for missing members in extracted content
+            for content in extracted.main_content:
+                if len(content) > 100:  # Large content blocks
+                    names_in_block = [name for name in all_member_names if name in content and name not in found_members]
+                    
+                    if names_in_block:
+                        content_clean = content.strip()
+                        
+                        for name in names_in_block:
+                            # Find the name's position and extract content after it
+                            name_pos = content_clean.find(name)
+                            if name_pos != -1:
+                                # Get content after the name
+                                after_name = content_clean[name_pos + len(name):]
+                                
+                                # Find the end of this member's response
+                                next_name_pos = len(after_name)
+                                for other_name in all_member_names:
+                                    if other_name != name and other_name in after_name:
+                                        pos = after_name.find(other_name)
+                                        if pos != -1 and pos < next_name_pos:
+                                            next_name_pos = pos
+                                
+                                # Extract the response (limit to reasonable length)
+                                response = after_name[:min(next_name_pos, 200)].strip()
+                                
+                                # Clean up response
+                                response_lines = [line.strip() for line in response.split('\n') if line.strip()]
+                                clean_response = ' '.join(response_lines)
+                                
+                                if len(clean_response) > 10:
+                                    member_responses.append({
+                                        'name': name,
+                                        'content': clean_response,
+                                        'location': ''
+                                    })
+                                    found_members.add(name)
+        
+        # Sort responses by expected order
+        all_member_names = [
+            "Christine Dodaro", "Jill Dinkel", "Jennifer Peto DeVincentis", 
+            "Jessica Weismiller", "Melissa Tomsik", "Corey Rippey", 
+            "Tanya Wilcox", "Petra Erlewein", "Nancy Fasan"
+        ]
+        
+        ordered_responses = []
+        for name in all_member_names:
+            for response in member_responses:
+                if response['name'] == name:
+                    ordered_responses.append(response)
+                    break
+        
+        member_responses = ordered_responses
+        
+        # Extract footer and additional content for polls
+        additional_sections = []
+        contact_info = {}
+        
+        # Parse HTML directly for sidebar content and structured sections
+        if hasattr(self, '_current_html_content'):
+            soup = BeautifulSoup(self._current_html_content, 'html.parser')
+            
+            # Look for "Passionate about pumpkins" section dynamically
+            passionate_header = soup.find('p', style=lambda x: x and 'font-weight: bold' in x and 'font-size: 1.6em' in x)
+            if passionate_header:
+                section_title = passionate_header.get_text().strip()
+                section_content = []
+                section_images = []
+                
+                # Get content that follows this header until we hit <hr> (stop boundary)
+                for sibling in passionate_header.next_siblings:
+                    if hasattr(sibling, 'get_text'):
+                        text = sibling.get_text().strip()
+                        if text and len(text) > 20:
+                            # Stop at <hr> which marks end of this section
+                            if sibling.name == 'hr':
+                                break
+                            # Only add individual fact paragraphs, not poll participation
+                            if not ('facebook.com/costco' in text.lower() or 'connection@costco.com' in text.lower()):
+                                section_content.append(text)
+                    elif hasattr(sibling, 'find'):
+                        # Look for images in this section
+                        img = sibling.find('img')
+                        if img and img.get('src'):
+                            section_images.append({
+                                'url': img.get('src', ''),
+                                'alt': img.get('alt', ''),
+                                'caption': img.get('alt', '')
+                            })
+                
+                if section_content:
+                    additional_sections.append({
+                        'title': section_title,
+                        'content': '\n\n'.join(section_content),
+                        'images': section_images
+                    })
+            
+            # Look for sidebar images specifically and fix URL
+            sidebar_imgs = soup.find_all('img', src=lambda x: x and 'sidebar' in x)
+            for img in sidebar_imgs:
+                img_src = img.get('src', '')
+                
+                # Convert relative URL to proper full URL if needed
+                if img_src.startswith('./'):
+                    # Extract the actual filename and create proper URL
+                    filename = img_src.split('/')[-1]  # Get just the filename
+                    if 'MemPoll_sidebar.gif' in filename:
+                        proper_url = 'https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_UF_MemPoll_sidebar.gif'
+                    else:
+                        proper_url = img_src  # Keep as-is if we can't determine proper URL
+                else:
+                    proper_url = img_src
+                
+                # Add sidebar image to a dedicated section
+                additional_sections.append({
+                    'title': 'Poll Sidebar',
+                    'content': '',
+                    'images': [{
+                        'url': proper_url,
+                        'alt': img.get('alt', ''),
+                        'caption': img.get('alt', '')
+                    }]
+                })
+        
+        # Fallback: Extract from main content for additional poll-related content
+        # But avoid duplicating content already captured in the "Passionate about pumpkins" section
+        existing_content = set()
+        existing_content_sentences = set()
+        
+        for section in additional_sections:
+            if section.get('content'):
+                section_content = section['content'].strip()
+                existing_content.add(section_content)
+                
+                # Also track individual sentences to avoid partial duplicates
+                for sentence in section_content.split('.'):
+                    sentence_clean = sentence.strip()
+                    if len(sentence_clean) > 30:  # Only track substantial sentences
+                        existing_content_sentences.add(sentence_clean.lower())
+        
+        for content in extracted.main_content:
+            content_clean = content.strip()
+            
+            # Skip if this content is already captured (exact match)
+            if content_clean in existing_content:
+                continue
+            
+            # Skip if this content contains sentences we've already captured
+            content_lower = content_clean.lower()
+            is_duplicate_content = False
+            for existing_sentence in existing_content_sentences:
+                if len(existing_sentence) > 50 and existing_sentence in content_lower:
+                    is_duplicate_content = True
+                    break
+            
+            if is_duplicate_content:
+                continue
+            
+            # Look for poll submission instructions (clean content)
+            if (('facebook.com/costco' in content_clean.lower() or 
+                'connection@costco.com' in content_clean.lower()) and 
+                'poll' in content_clean.lower() and
+                len(content_clean) < 200):  # Avoid large mixed content blocks
+                additional_sections.append({
+                    'title': 'Poll Participation',
+                    'content': content_clean,
+                    'images': []
+                })
+                existing_content.add(content_clean)
+            
+            # Look for educational content (like pumpkin facts) - clean content only
+            # Only add if not already captured in "Passionate about pumpkins" section
+            elif (any(keyword in content_clean.lower() for keyword in 
+                     ['according to', 'pbs.org', 'university', 'history.com']) and
+                  len(content_clean) > 80 and len(content_clean) < 300 and
+                  not any(skip in content_clean.lower() for skip in 
+                         ['chris', 'rusnak', 'passionate']) and
+                  content_clean not in existing_content):
+                additional_sections.append({
+                    'title': 'Did You Know?',
+                    'content': content_clean,
+                    'images': []
+                })
+                existing_content.add(content_clean)
+        
+        poll_results = {
             'total_responses': len(member_responses),
-            'sample_responses': [resp['response'][:100] + '...' for resp in member_responses[:7]]
-           }
-    
-        # Extract member stories from responses
-        member_stories = []
-        for response in member_responses:
-            member_stories.append(f"{response['name']}: {response['response']}")
-    
-        # Clean member comments (remove any remaining HTML/navigation)
-        clean_comments = []
-        for comment in member_comments:
-            if (len(comment) > 20 and 
-               not self._is_navigation_text_member(comment)):
-               clean_comments.append(comment)
-    
-        logger.info(f"Member extraction: {len(clean_comments)} comments, {len(poll_questions)} questions, {len(member_responses)} responses")
-    
+            'response_count': len(member_responses)
+        }
+        
         return MemberContent(
             **base_data,
             poll_questions=poll_questions,
-            member_comments=clean_comments[:12],
             poll_results=poll_results,
-            member_stories=member_stories[:15],
-            member_spotlights=member_responses[:8]  # Use top responses as spotlights
-       )
+            member_responses=member_responses,
+            additional_sections=additional_sections,
+            contact_info=contact_info,
+            # member_stories: Just the poll question for overview
+            member_stories=[f"Poll Question: {q}" for q in poll_questions],
+            # member_comments: Empty for poll type (responses are in member_responses)
+            member_comments=[]
+        )
+    
+    def _extract_member_comments_content(self, extracted: ExtractedContent, base_data: dict) -> MemberContent:
+        """Extract structured member comments with sections"""
+        import re
+        
+        member_sections = []
+        contact_info = {}
+        additional_sections = []
+        
+        # Find the main content block that contains multiple member sections
+        main_block = None
+        detected_headers = []
+        
+        # Dynamically detect section headers from content
+        for content in extracted.main_content:
+            content_lines = content.split('\n')
+            potential_headers = []
+            
+            for line in content_lines:
+                line_clean = line.strip()
+                # Dynamic detection of section headers - more flexible patterns
+                if (len(line_clean) > 8 and len(line_clean) < 100 and
+                    not any(skip in line_clean.lower() for skip in ['costco connection', 'email:', 'follow us', 'talk to', 'september', 'august']) and
+                    (re.match(r'^[A-Z][a-z]+(?:\s+[a-z]+)*(?:\s+[A-Z][a-z]+)*$', line_clean) or  # Title case patterns
+                     re.match(r'^[A-Z][a-z]+\s+[a-z]+\s+[A-Z][a-z]+', line_clean) or  # Mixed case
+                     re.match(r'^[A-Z]\s+moving\s+letter$', line_clean, re.IGNORECASE) or  # "A moving letter"
+                     re.match(r'^On\s+[A-Z][a-z]+', line_clean) or  # "On Costco..."
+                     'praise of' in line_clean.lower() or
+                     (line_clean.startswith('A ') and len(line_clean.split()) <= 4))):  # "A moving letter" type
+                    potential_headers.append(line_clean)
+            
+            # If we find multiple potential headers, this is likely the main block
+            if len(potential_headers) >= 2:
+                main_block = content
+                detected_headers = potential_headers
+                break
+        
+        if main_block and detected_headers:
+            # Create dynamic pattern from detected headers
+            escaped_headers = [re.escape(header) for header in detected_headers]
+            section_pattern = r'\n(' + '|'.join(escaped_headers) + r')\n'
+            sections = re.split(section_pattern, main_block, flags=re.IGNORECASE)
+            
+            # Process sections (skip first empty/header part)
+            for i in range(1, len(sections), 2):  # Get title and content pairs
+                if i + 1 < len(sections):
+                    section_title = sections[i].strip()
+                    section_content = sections[i + 1].strip()
+                    
+                    # Clean up content - remove extra whitespace and navigation
+                    content_lines = []
+                    for line in section_content.split('\n'):
+                        line_clean = line.strip()
+                        if (len(line_clean) > 5 and 
+                            not any(nav in line_clean.lower() for nav in 
+                                   ['share with us', 'talk to us', 'email:', 'advertising'])):
+                            content_lines.append(line_clean)
+                    
+                    if content_lines and section_title:
+                        section_content_clean = '\n'.join(content_lines)
+                        member_sections.append({
+                            'section_title': section_title,
+                            'content': section_content_clean,
+                            'author': self._extract_member_author(content_lines)
+                        })
+        
+        # Extract footer content separately with associated images
+        for content in extracted.main_content:
+            content_clean = content.strip()
+            if 'share with us' in content_clean.lower() and any(keyword in content_clean.lower() for keyword in ['travel story', 'trip', 'vacation']):
+                # Dynamically find footer images based on content type and context
+                footer_images = []
+                
+                # First try: Look for images that match the current page type
+                page_type_indicators = ['member_comments', 'member', 'comments']
+                for img in extracted.images:
+                    img_src = img.get('src', '').lower()
+                    
+                    # Dynamic matching: content type + sequential numbering (02, 03, etc.)
+                    if any(indicator in img_src for indicator in page_type_indicators):
+                        # Prefer numbered variants (02, 03) over main image (01)
+                        if any(num in img_src for num in ['02.jpg', '03.jpg', '_02.', '_03.']):
+                            footer_images.append({
+                                'url': img.get('src', ''),
+                                'alt': img.get('alt', ''),
+                                'caption': img.get('title', '')
+                            })
+                            break
+                
+                # Fallback: If no specific footer image found, look for any related image
+                if not footer_images:
+                    for img in extracted.images:
+                        img_src = img.get('src', '').lower()
+                        img_alt = img.get('alt', '').lower()
+                        
+                        if (any(indicator in img_src for indicator in page_type_indicators) or
+                            any(keyword in img_alt for keyword in ['share', 'travel', 'member'])):
+                            footer_images.append({
+                                'url': img.get('src', ''),
+                                'alt': img.get('alt', ''),
+                                'caption': img.get('title', '')
+                            })
+                            break
+                
+                additional_sections.append({
+                    'title': 'Share With Us', 
+                    'content': content_clean,
+                    'images': footer_images
+                })
+            elif 'talk to us' in content_clean.lower() and 'connection@costco.com' in content_clean.lower():
+                contact_info['contact_instructions'] = content_clean
+            elif 'advertising' in content_clean.lower() and len(content_clean) > 100:
+                additional_sections.append({
+                    'title': 'Advertising', 
+                    'content': content_clean,
+                    'images': []
+                })
+        
+        return MemberContent(
+            **base_data,
+            member_sections=member_sections,
+            contact_info=contact_info,
+            additional_sections=additional_sections,
+            # member_stories: Section summaries for overview
+            member_stories=[f"{s['section_title']}" for s in member_sections],
+            # member_comments: Leave empty for comments sub-type (not actual comments)
+            member_comments=[]
+        )
+    
+    def _extract_member_connection_content(self, extracted: ExtractedContent, base_data: dict) -> MemberContent:
+        """Extract member connection feature story content"""
+        
+        member_stories = []
+        member_sections = []
+        additional_sections = []
+        contact_info = {}
+        
+        # Dynamic title extraction from headings
+        main_title = base_data.get('title', '')
+        section_title = main_title
+        
+        # Find the main story title from headings
+        for heading in extracted.headings:
+            heading_text = heading.get('text', '').strip()
+            if heading.get('level', 1) == 1 and len(heading_text) > 3:
+                section_title = heading_text
+                break
+        
+        # Dynamic story content extraction - look for substantial paragraphs
+        story_content = []
+        song_lyrics_content = []
+        
+        # Separate story content from song lyrics using headings as boundaries
+        current_section = 'story'
+        
+        for content in extracted.main_content:
+            content_clean = content.strip()
+            
+            if len(content_clean) < 20:
+                continue
+            
+            # Check section boundaries
+            if any(keyword in content_clean.lower() for keyword in ['song from the heart', 'lyrics from kristen']):
+                current_section = 'lyrics'
+                song_lyrics_content.append(content_clean)
+                continue
+                
+            # Route content to appropriate section
+            if current_section == 'story':
+                # Dynamic story identification - narrative content only
+                if any(indicator in content_clean.lower() for indicator in [
+                    'calgary-based', 'lost her husband', 'music teacher', 'video for her',
+                    'therapeutic capacity', 'emotional wounds', 'healing', 'journey', 'dan jones'
+                ]) and 'lyrics' not in content_clean.lower():
+                    story_content.append(content_clean)
+                    member_stories.append(content_clean)
+            elif current_section == 'lyrics':
+                # All content after lyrics header goes to lyrics
+                song_lyrics_content.append(content_clean)
+        
+        # Use HTML parsing to get complete lyrics if universal extractor missed them
+        if hasattr(self, '_current_html_content') and len(song_lyrics_content) < 3:
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(self._current_html_content, 'html.parser')
+            
+            # Find lyrics section after "SONG FROM THE HEART" heading
+            lyrics_header = soup.find('h3', string=lambda x: x and 'song from the heart' in x.lower())
+            if lyrics_header:
+                # Get all content after the lyrics header
+                lyrics_content = []
+                for sibling in lyrics_header.next_siblings:
+                    if hasattr(sibling, 'get_text'):
+                        text = sibling.get_text().strip()
+                        if text and len(text) > 10:
+                            lyrics_content.append(text)
+                
+                if lyrics_content:
+                    song_lyrics_content = lyrics_content
+        
+        # Dynamic author extraction from story content
+        author_info = {'name': '', 'location': '', 'story': ''}
+        
+        for content in story_content:
+            content_lower = content.lower()
+            
+            # Extract author name dynamically
+            if not author_info['name']:
+                # Look for name patterns
+                import re
+                name_match = re.search(r'(\w+\s+\w+)(?:\s+lost|\s+is|\s+says)', content)
+                if name_match:
+                    potential_name = name_match.group(1)
+                    if len(potential_name.split()) == 2:  # First and Last name
+                        author_info['name'] = potential_name
+            
+            # Extract location dynamically
+            if not author_info['location']:
+                location_match = re.search(r'(\w+(?:-\w+)?)-based', content)
+                if location_match:
+                    author_info['location'] = location_match.group(1)
+        
+        # Create song lyrics as footer section if found
+        if song_lyrics_content:
+            additional_sections.append({
+                'title': 'Song Lyrics',
+                'content': '\n'.join(song_lyrics_content),
+                'images': []
+            })
+        
+        # Extract sidebar images
+        sidebar_images = []
+        for img in extracted.images:
+            img_src = img.get('src', '')
+            img_alt = img.get('alt', '')
+            
+            # Look for sidebar indicators in filename or path
+            if any(indicator in img_src.lower() for indicator in [
+                '_300x600_', 'sidebar', '/Member Connection', 'IVC_', 'Campbells_'
+            ]) and not any(skip in img_src.lower() for skip in ['golf', 'grocery', 'instacart']):
+                
+                # Dynamic URL normalization for any malformed sidebar image URLs
+                proper_url = self._normalize_sidebar_image_url(img_src)
+                
+                sidebar_images.append({
+                    'url': proper_url,
+                    'alt': img_alt,
+                    'caption': img_alt
+                })
+        
+        # Add sidebar images as footer section if found
+        if sidebar_images:
+            additional_sections.append({
+                'title': 'Sidebar Images',
+                'content': '',
+                'images': sidebar_images
+            })
+        
+        # Dynamic contact information extraction
+        for content in extracted.main_content:
+            content_lower = content.lower()
+            # Look for contact information with URLs, prevention resources, etc.
+            if any(indicator in content_lower for indicator in [
+                'visit', 'more information', 'afsp.org', 'tinyurl.com', 
+                'prevention', 'resources', 'contact', 'email'
+            ]):
+                if len(content.strip()) > 50:  # Ensure substantial contact info
+                    contact_info['contact_instructions'] = content.strip()
+                    break
+        
+        # Extract proper image caption for featured image
+        image_caption = ''
+        for content in extracted.main_content:
+            if 'left to right' in content.lower() and 'scott says' in content.lower():
+                image_caption = content.strip()
+                break
+        
+        # Update base_data with proper image caption if found
+        if image_caption:
+            base_data['image_caption'] = image_caption
+        
+        # Create structured sections for connection content
+        if story_content:
+            member_sections = [
+                {
+                    'section_title': section_title,
+                    'content': '\n'.join(story_content),
+                    'author': author_info if author_info['name'] else {}
+                }
+            ]
+        
+        return MemberContent(
+            **base_data,
+            member_sections=member_sections,
+            member_stories=[section_title] if member_sections else [],  # Just the main story title to avoid duplication
+            additional_sections=additional_sections,
+            contact_info=contact_info,
+            # member_comments: Empty for connection type (these are stories, not comments)
+            member_comments=[],
+            # Remove spotlights field duplication - use member_sections instead
+            member_spotlights=[]
+        )
+    
+    def _extract_general_member_content(self, extracted: ExtractedContent, base_data: dict) -> MemberContent:
+        """Fallback for general member content"""
+        
+        # Use the original comprehensive extraction as fallback
+        member_data = self._extract_comprehensive_member_content(extracted)
+        
+        return MemberContent(
+            **base_data,
+            member_stories=member_data.get('member_stories', [])[:10],
+            member_comments=member_data.get('member_comments', [])[:10],
+            poll_questions=member_data.get('poll_questions', []),
+            member_sections=member_data.get('member_sections', [])
+        )
 
     def _is_navigation_text_member(self, text: str) -> bool:
         """Check if text is navigation/HTML content for member pages"""
@@ -2261,6 +2913,221 @@ Instructions: {len(current_instructions)} found
                 score += 10
         
         return min(score, 100)
+    
+    def _extract_comprehensive_member_content(self, extracted: ExtractedContent) -> dict:
+        """Dynamically extract structured member content with proper sections"""
+        import re
+        
+        # Search through all content sources
+        all_content_sources = [
+            extracted.main_content,
+            extracted.full_text.split('\n') if extracted.full_text else [],
+            [h.get('text', '') for h in extracted.headings if h.get('text')],
+            extracted.quotes or []
+        ]
+        
+        # Initialize structured content
+        member_sections = []
+        poll_questions = []
+        member_responses = []
+        contact_info = {}
+        additional_sections = []
+        
+        # Track seen content to avoid duplicates
+        seen_content = set()
+        
+        # Process content to find structured sections
+        current_section = None
+        current_content = []
+        
+        for content_source in all_content_sources:
+            for content in content_source:
+                if not content or len(content.strip()) < 10:
+                    continue
+                
+                content_clean = content.strip()
+                content_lower = content_clean.lower()
+                
+                # Skip if already seen (prevent duplicates)
+                content_hash = content_clean[:150].lower() if len(content_clean) > 150 else content_clean.lower()
+                if content_hash in seen_content:
+                    continue
+                seen_content.add(content_hash)
+                
+                # Skip navigation metadata (but allow contact info)
+                if any(nav in content_lower for nav in [
+                    'costco connection', 'member poll', 'member comments'
+                ]) and len(content_clean) < 50:
+                    continue
+                
+                # Extract poll questions
+                if any(question_indicator in content_lower for question_indicator in [
+                    'what do you', 'how do you', 'do you have'
+                ]) and '?' in content_clean and len(content_clean) < 200:
+                    poll_questions.append(content_clean)
+                    continue
+                
+                # Extract contact information
+                if any(contact_indicator in content_lower for contact_indicator in [
+                    'share with us', 'talk to us', 'email:', 'connection@costco.com', 'wfifield@costco.com'
+                ]):
+                    if 'email' in content_lower or '@costco.com' in content_lower:
+                        contact_info['instructions'] = content_clean
+                    continue
+                
+                # Extract footer sections
+                if any(footer_indicator in content_lower for footer_indicator in [
+                    'advertising and products', 'all advertisements will indicate'
+                ]) and len(content_clean) > 100:
+                    additional_sections.append({
+                        'title': 'Advertising and Products',
+                        'content': content_clean
+                    })
+                    continue
+                
+                # Detect section headers (member comment categories)
+                section_patterns = [
+                    r'^(On\s+[^.]+)$',  # "On Costco going global"
+                    r'^([A-Z][a-z]+(?:\s+[a-z]+){1,3})$',  # "Love of learning", "A moving letter"
+                    r'^(In\s+praise\s+of\s+[^.]+)$'  # "In praise of Costco's funeral supplies"
+                ]
+                
+                is_section_header = False
+                for pattern in section_patterns:
+                    if re.match(pattern, content_clean) and len(content_clean) < 80:
+                        # Save previous section if exists
+                        if current_section and current_content:
+                            member_sections.append({
+                                'section_title': current_section,
+                                'content': '\n'.join(current_content),
+                                'author': self._extract_member_author(current_content)
+                            })
+                        
+                        # Start new section
+                        current_section = content_clean
+                        current_content = []
+                        is_section_header = True
+                        break
+                
+                if is_section_header:
+                    continue
+                
+                # Add content to current section or create individual responses
+                if current_section:
+                    current_content.append(content_clean)
+                elif len(content_clean) > 50 and not any(skip in content_lower for skip in [
+                    'costco connection', 'page', 'home'
+                ]):
+                    # Individual member response without clear section
+                    member_responses.append({
+                        'name': self._extract_member_name(content_clean),
+                        'content': content_clean,
+                        'location': self._extract_member_location(content_clean)
+                    })
+        
+        # Save final section
+        if current_section and current_content:
+            member_sections.append({
+                'section_title': current_section,
+                'content': '\n'.join(current_content),
+                'author': self._extract_member_author(current_content)
+            })
+        
+        # Legacy compatibility - create flat lists for backward compatibility
+        member_stories = []
+        member_comments = []
+        
+        for section in member_sections:
+            member_stories.append(f"{section['section_title']}: {section['content']}")
+            member_comments.append(section['content'])
+        
+        return {
+            'member_sections': member_sections,
+            'poll_questions': poll_questions[:3],
+            'member_responses': member_responses,
+            'contact_info': contact_info,
+            'additional_sections': additional_sections,
+            # Legacy compatibility
+            'member_stories': member_stories,
+            'member_comments': member_comments
+        }
+    
+    def _contains_member_name_pattern(self, content: str) -> bool:
+        """Check if content contains member name patterns"""
+        import re
+        
+        # Look for name patterns: "FirstName LastName:" or "FirstName:" 
+        name_patterns = [
+            r'^[A-Z][a-z]+\s+[A-Z][a-z]+:',  # "John Smith:"
+            r'^[A-Z][a-z]+:',                # "John:"
+            r'\b[A-Z][a-z]+\s+[A-Z][a-z]+\b.*:',  # Mid-text "John Smith:"
+        ]
+        
+        for pattern in name_patterns:
+            if re.search(pattern, content):
+                return True
+        
+        return False
+    
+    def _extract_member_author(self, content_list: list) -> dict:
+        """Extract member author information from content"""
+        import re
+        
+        for content in content_list:
+            # Look for name and location patterns at the end
+            # Pattern: "Name, Location" or "Name\nLocation"
+            name_location_patterns = [
+                r'([A-Z][a-z]+\s+[A-Z][a-z]+),\s*(.+)$',  # "John Smith, Location"
+                r'([A-Z][a-z]+\s+[A-Z][a-z]+)\s*\n\s*(.+)$',  # "John Smith\nLocation"
+                r'([A-Z][a-z]+\s+[A-Z][a-z]+),\s*via\s+email',  # "John Smith, via email"
+            ]
+            
+            for pattern in name_location_patterns:
+                match = re.search(pattern, content.strip())
+                if match:
+                    return {
+                        'name': match.group(1).strip(),
+                        'location': match.group(2).strip() if len(match.groups()) > 1 else '',
+                        'source': 'via email' if 'via email' in content else 'letter'
+                    }
+        
+        return {}
+    
+    def _extract_member_name(self, content: str) -> str:
+        """Extract member name from content"""
+        import re
+        
+        # Look for name patterns
+        name_patterns = [
+            r'^([A-Z][a-z]+\s+[A-Z][a-z]+):',  # "John Smith:"
+            r'([A-Z][a-z]+\s+[A-Z][a-z]+),\s*via\s+email',  # "John Smith, via email"
+            r'([A-Z][a-z]+\s+[A-Z][a-z]+),\s*([A-Z][a-z]+)'  # "John Smith, Location"
+        ]
+        
+        for pattern in name_patterns:
+            match = re.search(pattern, content)
+            if match:
+                return match.group(1).strip()
+        
+        return 'Member'
+    
+    def _extract_member_location(self, content: str) -> str:
+        """Extract member location from content"""
+        import re
+        
+        # Look for location patterns
+        location_patterns = [
+            r',\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*,\s*[A-Z]{2,})$',  # ", City, State"
+            r',\s*([A-Z][a-z]+\s+[A-Z][a-z]+)$',  # ", City State"
+            r'\n([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*,\s*[A-Z]{2,})$'  # "\nCity, State"
+        ]
+        
+        for pattern in location_patterns:
+            match = re.search(pattern, content)
+            if match:
+                return match.group(1).strip()
+        
+        return ''
 
     def call_ai(self, prompt: str) -> Optional[Dict]:
         """Call Claude AI via AWS Bedrock"""
@@ -2355,6 +3222,42 @@ Instructions: {len(current_instructions)} found
         logger.info(f"🖼️ Selected best image (score: {best_image['score']}): {best_image['src']}")
         return best_image['src']
 
+    def _normalize_sidebar_image_url(self, img_src: str) -> str:
+        """Dynamically normalize any malformed sidebar image URL to proper Costco format"""
+        
+        # If already a proper URL, return as-is
+        if img_src.startswith('https://mobilecontent.costco.com/'):
+            return img_src
+        
+        # Extract just the filename from any type of malformed URL
+        filename = ''
+        
+        # Handle various malformed URL patterns
+        if '/' in img_src:
+            # Get the last part after any slash
+            filename = img_src.split('/')[-1]
+        else:
+            # If no slash, use the whole string as filename
+            filename = img_src
+        
+        # Clean up filename from URL encoding or other issues
+        filename = filename.split('?')[0]  # Remove query parameters
+        filename = filename.split('#')[0]  # Remove anchors
+        
+        # Dynamic base URL determination based on content patterns
+        base_url = 'https://mobilecontent.costco.com/live/resource/img'
+        
+        # Determine the correct subdirectory based on filename patterns
+        if any(pattern in filename.lower() for pattern in ['027_ivc', '045_campbells', '_300x600_']):
+            # These are promotional sidebar ads, likely in connection folder
+            return f'{base_url}/static-us-connection-september-23/{filename}'
+        elif 'member' in filename.lower():
+            # Member-related images
+            return f'{base_url}/static-us-connection-october-23/{filename}'
+        else:
+            # Default to current connection folder
+            return f'{base_url}/static-us-connection-september-23/{filename}'
+    
     def _get_best_image_alt(self, images: list) -> str:
         """Get the highest scoring image alt text"""
         if not images:

@@ -29,6 +29,7 @@ class BaseContent:
     description: str = ""
     featured_image: str = ""
     image_alt: str = ""
+    image_caption: str = ""
     content_type: ContentType = ContentType.EDITORIAL
     tags: List[str] = field(default_factory=list)
     publish_date: str = ""
@@ -179,16 +180,26 @@ class ShoppingContent(BaseContent):
 
 @dataclass
 class MemberContent(BaseContent):
-    """Member-focused content schema."""
+    """Member-focused content schema with structured sections."""
     content_type: ContentType = ContentType.MEMBER
     
-    # Member specifics
-    member_stories: List[str] = field(default_factory=list)
-    poll_questions: List[str] = field(default_factory=list)
-    poll_results: Dict[str, str] = field(default_factory=dict)
-    member_comments: List[str] = field(default_factory=list)
+    # Structured member content sections
+    member_sections: List[Dict[str, Union[str, Dict[str, str]]]] = field(default_factory=list)
     
-    # Community focus
+    # Poll-specific content
+    poll_questions: List[str] = field(default_factory=list)
+    poll_results: Dict[str, Union[str, int, List[str]]] = field(default_factory=dict)
+    
+    # Member responses and interactions
+    member_responses: List[Dict[str, str]] = field(default_factory=list)
+    
+    # Contact and additional content sections
+    contact_info: Dict[str, str] = field(default_factory=dict)
+    additional_sections: List[Dict[str, Union[str, Dict[str, str]]]] = field(default_factory=list)
+    
+    # Legacy fields for backward compatibility
+    member_stories: List[str] = field(default_factory=list)
+    member_comments: List[str] = field(default_factory=list)
     member_spotlights: List[str] = field(default_factory=list)
     community_events: List[str] = field(default_factory=list)
 
