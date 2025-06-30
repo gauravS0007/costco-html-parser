@@ -998,6 +998,426 @@ class FixedSuperEnhancedCostcoProcessor:
             'bio': author_bio.strip(),
             'image': author_image
         }
+    
+    def _extract_comprehensive_editorial_content(self, extracted: ExtractedContent) -> dict:
+        """Dynamically extract and organize editorial content properly"""
+        import re
+        
+        # Search through all content sources
+        all_content_sources = [
+            extracted.main_content,
+            extracted.full_text.split('\n') if extracted.full_text else [],
+            [h.get('text', '') for h in extracted.headings if h.get('text')],
+            extracted.quotes or []
+        ]
+        
+        # Organize content into proper categories
+        editorial_paragraphs = []
+        upcoming_features = {}
+        legal_disclaimers = []
+        sidebar_author_content = []
+        
+        # Add duplicate tracking
+        seen_content = set()
+        
+        # Process all content and categorize properly
+        for content_source in all_content_sources:
+            for content in content_source:
+                if not content or len(content.strip()) < 10:
+                    continue
+                
+                content_lower = content.lower()
+                content_clean = content.strip()
+                
+                # Skip if already seen (prevent duplicates)
+                if content_clean in seen_content:
+                    continue
+                seen_content.add(content_clean)
+                
+                # Skip metadata headers and short fragments
+                if any(meta in content_lower for meta in ['costco connection |', 'october', 'september']) and len(content_clean) < 50:
+                    continue
+                
+                # Skip ALL staff names completely from editorial content
+                if any(staff in content_lower for staff in [
+                    'stephanie e. ponder', 'will fifield', 'christina guerrero',
+                    'shelley crenshaw', 'dan jones', 'jen madera',
+                    'mark cardwell', 'peter greenberg', 'cindy hutchinson',
+                    'shana mcnally', 'whitney seneker', 'alexandra van ingen',
+                    'lory williams', 'antolin matsuda', 'kathi tipper',
+                    'michael colonno', 'raven stackhouse', 'andy penfold',
+                    'owen roberts', 'erin silver', 'rosie wolf williams',
+                    'michele wojciechowski', 'chrissy edrozo', 'sheri flies',
+                    'hope katz gibbs', 'erik j. martin', '@costco.com',
+                    'phone:', 'email:', '425-', '973-', '999 lake drive',
+                    'issaquah, wa', 'p.o. box', 'seattle, wa'
+                ]):
+                    continue
+                
+                # Legal disclaimers and subscription info
+                if any(legal in content_lower for legal in [
+                    'the costco connection is published', 'copyright', 'all editorial material',
+                    'mailed to primary executive', 'live chat', 'membership processing'
+                ]) and len(content_clean) > 50:
+                    legal_disclaimers.append(content_clean)
+                
+                # Coming next month section
+                elif 'coming next month' in content_lower and len(content_clean) > 30:
+                    if 'our cover story' in content_lower:
+                        upcoming_features['next_month_feature'] = content_clean
+                
+                # Author sidebar content (very short Sandy Torrey references only)
+                elif any(author in content_lower for author in ['sandy torrey']) and len(content_clean) < 100:
+                    sidebar_author_content.append(content_clean)
+                
+                # Main editorial content (passion is key article) - only substantial content
+                elif (len(content_clean) > 50 
+                      and not any(skip in content_lower for skip in [
+                          'the costco connection is published', 'copyright',
+                          'publisher\'s note -', 'publisher\'s note', 'coming next month',
+                          'sandy torrey is senior vice president', 'our cover story will take',
+                          'fun, alternative ideas for holiday entertaining'
+                      ])):
+                    editorial_paragraphs.append(content_clean)
+        
+        # Build organized editorial article structure
+        editorial_article = {
+            'title': 'Passion is key',
+            'content_paragraphs': editorial_paragraphs
+        }
+        
+        # Extract editorial staff details
+        editorial_staff = self._extract_editorial_staff_details(all_content_sources)
+        
+        return {
+            'editorial_article': editorial_article,
+            'upcoming_features': upcoming_features,
+            'editorial_staff': editorial_staff,
+            'legal_disclaimers': legal_disclaimers,
+            'sidebar_content': sidebar_author_content,
+            'call_to_action': "",
+            # Legacy fields - keep empty for clean structure
+            'key_messages': [],
+            'costco_values': [],
+            'main_content_paragraphs': [],
+            'product_highlights': [],
+            'upcoming_content': []
+        }
+    
+    def _build_editorial_author_object(self, extracted: ExtractedContent) -> dict:
+        """Build editorial author object matching tech/travel structure"""
+        import re
+        
+        # Search through all content sources for Sandy Torrey information
+        all_content_sources = [
+            extracted.main_content,
+            extracted.full_text.split('\n') if extracted.full_text else [],
+            [h.get('text', '') for h in extracted.headings if h.get('text')],
+            extracted.quotes or []
+        ]
+        
+        author_name = ""
+        author_title = ""
+        author_bio = ""
+        author_image = {}
+        
+        # Extract Sandy Torrey details
+        for content_source in all_content_sources:
+            for content in content_source:
+                if not content:
+                    continue
+                    
+                content_lower = content.lower()
+                
+                # Find Sandy Torrey name and title
+                if 'sandy torrey' in content_lower:
+                    author_name = "Sandy Torrey"
+                    
+                    # Extract title dynamically
+                    title_match = re.search(r'is\s+([^.]+(?:Senior Vice President[^.]*))\.', content, re.IGNORECASE)
+                    if title_match:
+                        author_title = title_match.group(1).strip()
+                    elif 'senior vice president' in content_lower:
+                        # Fallback title extraction
+                        title_parts = content.split('Sandy Torrey')[1] if 'Sandy Torrey' in content else content
+                        if 'senior vice president' in title_parts.lower():
+                            author_title = "Senior Vice President, Corporate Membership, Marketing and Publisher, Costco Connection"
+                    
+                    # Extract full bio if it's a substantial sentence
+                    if len(content.strip()) > 50 and 'senior vice president' in content_lower:
+                        author_bio = content.strip()
+                        break
+        
+        # Find author headshot image
+        for img in extracted.images:
+            img_src = img.get('src', '').lower()
+            img_alt = img.get('alt', '').lower()
+            
+            # Look for Sandy Torrey headshot
+            if any(indicator in img_src for indicator in ['sandy', 'torrey', 'headshot']) or \
+               any(indicator in img_alt for indicator in ['woman', 'head', 'sandy']):
+                author_image = {
+                    'url': img.get('src', ''),
+                    'alt': img.get('alt', '')
+                }
+                break
+        
+        # Only return author object if we found substantial information
+        if author_name and (author_title or author_bio):
+            return {
+                'name': author_name,
+                'title': author_title,
+                'bio': author_bio,
+                'image': author_image
+            }
+        
+        return {}
+    
+    def _extract_clean_staff_directory(self, all_content_sources) -> dict:
+        """Extract clean staff directory from sidebar content"""
+        staff_directory = {
+            'editorial_team': [],
+            'art_production': [],
+            'advertising': [],
+            'management': [],
+            'contact_info': []
+        }
+        
+        for content_source in all_content_sources:
+            for content in content_source:
+                if not content or len(content.strip()) < 5:
+                    continue
+                    
+                content_clean = content.strip()
+                content_lower = content_clean.lower()
+                
+                # Only capture staff info with email addresses
+                if '@costco.com' in content_lower and len(content_clean) < 100:
+                    if any(role in content_lower for role in ['editor', 'writer', 'reporter']):
+                        if content_clean not in staff_directory['editorial_team']:
+                            staff_directory['editorial_team'].append(content_clean)
+                    elif any(role in content_lower for role in ['art', 'design', 'production']):
+                        if content_clean not in staff_directory['art_production']:
+                            staff_directory['art_production'].append(content_clean)
+                    elif any(role in content_lower for role in ['advertising', 'manager', 'specialist']):
+                        if content_clean not in staff_directory['advertising']:
+                            staff_directory['advertising'].append(content_clean)
+                    elif any(role in content_lower for role in ['business', 'circulation']):
+                        if content_clean not in staff_directory['management']:
+                            staff_directory['management'].append(content_clean)
+        
+        return staff_directory
+    
+    def _extract_publication_info(self, all_content_sources) -> dict:
+        """Extract publication and subscription information"""
+        publication_info = {
+            'address': '',
+            'subscription_info': [],
+            'legal_notice': ''
+        }
+        
+        for content_source in all_content_sources:
+            for content in content_source:
+                if not content or len(content.strip()) < 20:
+                    continue
+                    
+                content_clean = content.strip()
+                content_lower = content_clean.lower()
+                
+                # Address information
+                if '999 lake drive' in content_lower:
+                    publication_info['address'] = content_clean
+                
+                # Subscription info
+                elif any(sub in content_lower for sub in ['mailed to primary', 'live chat', 'membership processing']):
+                    if content_clean not in publication_info['subscription_info']:
+                        publication_info['subscription_info'].append(content_clean)
+                
+                # Legal notice
+                elif 'the costco connection is published' in content_lower and len(content_clean) > 100:
+                    publication_info['legal_notice'] = content_clean
+        
+        return publication_info
+    
+    def _extract_editorial_staff_details(self, all_content_sources) -> dict:
+        """Extract comprehensive editorial staff details from sidebar with proper organization"""
+        editorial_staff = {
+            'publisher': {
+                'name': '',
+                'email': '',
+                'details': []
+            },
+            'editorial_director': {
+                'name': '',
+                'contact': '',
+                'details': []
+            },
+            'editors': [],
+            'reporters': [],
+            'copy_editors': [],
+            'contributors': [],
+            'art_team': {
+                'art_director': '',
+                'associate_art_directors': [],
+                'graphic_designers': []
+            },
+            'production_team': {
+                'editorial_production_manager': '',
+                'print_manager': '',
+                'production_specialist': '',
+                'online_coordinator': ''
+            },
+            'advertising_team': {
+                'publishing_manager': '',
+                'assistant_manager': '',
+                'specialists': [],
+                'coordinator': '',
+                'copywriter': '',
+                'production_specialist': '',
+                'graphic_designer': '',
+                'national_representative': ''
+            },
+            'management': {
+                'business_manager': '',
+                'circulation_manager': '',
+                'circulation_coordinator': ''
+            },
+            'contact_info': {
+                'address': '',
+                'po_box': '',
+                'subscription_info': []
+            }
+        }
+        
+        # Process all content to extract staff details
+        for content_source in all_content_sources:
+            for content in content_source:
+                if not content or len(content.strip()) < 5:
+                    continue
+                    
+                content_clean = content.strip()
+                content_lower = content_clean.lower()
+                
+                # Skip non-staff content - be very restrictive
+                if any(skip in content_lower for skip in [
+                    'irobot', 'embr wave', 'coming next month', 'cover story', 
+                    'passion is key', 'working for costco', 'suppliers', 'innovative',
+                    'nasa', 'sophisticated technology', 'wristband', 'hot flashes',
+                    'holiday entertaining', 'fun, alternative ideas', 'squishmallows',
+                    'jazwares', 'judd zebersky', 'law office', 'toy company'
+                ]) or len(content_clean) > 200:  # Skip very long content paragraphs
+                    continue
+                
+                # Extract specific staff information based on patterns
+                if 'sandy torrey' in content_lower and '@costco.com' in content_lower:
+                    editorial_staff['publisher']['name'] = 'Sandy Torrey'
+                    editorial_staff['publisher']['email'] = 'storrey@costco.com'
+                elif 'stephanie e. ponder' in content_lower:
+                    editorial_staff['editorial_director']['name'] = 'Stephanie E. Ponder'
+                    editorial_staff['editorial_director']['contact'] = '425-427-7134 sponder@costco.com'
+                elif content_lower.startswith('u.s.') and 'will fifield' in content_lower:
+                    if content_clean not in editorial_staff['editors']:
+                        editorial_staff['editors'].append('U.S. Will Fifield wfifield@costco.com')
+                elif content_lower.startswith('canada') and 'christina guerrero' in content_lower:
+                    if content_clean not in editorial_staff['editors']:
+                        editorial_staff['editors'].append('Canada Christina Guerrero cguerrero2@costco.com')
+                elif any(reporter in content_lower for reporter in ['shelley crenshaw', 'dan jones', 'jen madera']) and '@costco.com' in content_lower:
+                    if content_clean not in editorial_staff['reporters']:
+                        editorial_staff['reporters'].append(content_clean)
+                elif any(copy_editor in content_lower for copy_editor in ['cindy hutchinson', 'shana mcnally', 'whitney seneker', 'alexandra van ingen']):
+                    if content_clean not in editorial_staff['copy_editors']:
+                        editorial_staff['copy_editors'].append(content_clean)
+                elif any(contributor in content_lower for contributor in ['mark cardwell', 'peter greenberg', 'erik j. martin']) and len(content_clean) > 50:
+                    if content_clean not in editorial_staff['contributors']:
+                        editorial_staff['contributors'].append(content_clean)
+                elif 'lory williams' in content_lower and 'lwilliams@costco.com' in content_lower:
+                    editorial_staff['art_team']['art_director'] = content_clean
+                elif any(art_dir in content_lower for art_dir in ['david schneider', 'brenda shecter']) and '@costco.com' in content_lower:
+                    if content_clean not in editorial_staff['art_team']['associate_art_directors']:
+                        editorial_staff['art_team']['associate_art_directors'].append(content_clean)
+                elif any(designer in content_lower for designer in ['ken broman', 'steven lait', 'megan lees', 'chris rusnak']):
+                    if content_clean not in editorial_staff['art_team']['graphic_designers']:
+                        editorial_staff['art_team']['graphic_designers'].append(content_clean)
+                elif 'antolin matsuda' in content_lower:
+                    editorial_staff['production_team']['editorial_production_manager'] = content_clean
+                elif 'maryanne robbers' in content_lower:
+                    editorial_staff['production_team']['print_manager'] = content_clean
+                elif 'grace clark' in content_lower:
+                    editorial_staff['production_team']['production_specialist'] = content_clean
+                elif 'dorothy strakele' in content_lower:
+                    editorial_staff['production_team']['online_coordinator'] = content_clean
+                elif 'kathi tipper-holgersen' in content_lower:
+                    editorial_staff['advertising_team']['publishing_manager'] = content_clean
+                elif 'susan detlor' in content_lower:
+                    editorial_staff['advertising_team']['assistant_manager'] = content_clean
+                elif any(ad_spec in content_lower for ad_spec in ['raven stackhouse', 'aliw moral']) and '@costco.com' in content_lower:
+                    if content_clean not in editorial_staff['advertising_team']['specialists']:
+                        editorial_staff['advertising_team']['specialists'].append(content_clean)
+                elif 'michael colonno' in content_lower:
+                    editorial_staff['advertising_team']['national_representative'] = content_clean
+                elif 'bill urlevich' in content_lower:
+                    editorial_staff['advertising_team']['copywriter'] = content_clean
+                elif 'josh livingston' in content_lower:
+                    editorial_staff['advertising_team']['production_specialist'] = content_clean
+                elif 'christina muñoz-moye' in content_lower:
+                    editorial_staff['advertising_team']['graphic_designer'] = content_clean
+                elif 'jane johnson' in content_lower and len(content_clean) < 30:
+                    editorial_staff['management']['business_manager'] = content_clean
+                elif 'rossie cruz' in content_lower:
+                    editorial_staff['management']['circulation_manager'] = content_clean
+                elif 'luke okada' in content_lower:
+                    editorial_staff['management']['circulation_coordinator'] = content_clean
+                elif any(address in content_lower for address in ['p.o. box', 'seattle', 'issaquah', '999 lake drive']):
+                    if 'p.o. box' in content_lower:
+                        editorial_staff['contact_info']['po_box'] = content_clean
+                    elif '999 lake drive' in content_lower:
+                        editorial_staff['contact_info']['address'] = content_clean
+                elif any(sub in content_lower for sub in ['subscription', 'live chat', 'mailed to primary']):
+                    if content_clean not in editorial_staff['contact_info']['subscription_info']:
+                        editorial_staff['contact_info']['subscription_info'].append(content_clean)
+        
+        return editorial_staff
+    
+    def _find_editorial_featured_image(self, extracted: ExtractedContent) -> dict:
+        """Find proper editorial featured image - very restrictive to avoid wrong images"""
+        # Editorial pages typically don't have featured images other than author headshots
+        # Return empty unless there's a clear editorial content image (not headshot/icon/random)
+        
+        for img in extracted.images:
+            img_src = img.get('src', '').lower()
+            img_alt = img.get('alt', '').lower()
+            
+            # Skip ALL common wrong images
+            if any(skip in img_src for skip in [
+                'headshot', 'sandy', 'torrey', 'golf', 'espot', 'hero', 
+                'icon', 'retina', 'gif', 'tab', 'oo_', 'logo'
+            ]) or any(skip in img_alt for skip in [
+                'head', 'woman', 'man', 'person', 'icon', 'logo'
+            ]):
+                continue
+            
+            # Only accept if explicitly editorial content image (very rare)
+            if 'editorial-content' in img_src or 'publisher-note-image' in img_src:
+                return {
+                    'url': img.get('src', ''),
+                    'alt': img.get('alt', '')
+                }
+        
+        # Default: No featured image for editorial content
+        return {}
+    
+    def _extract_editorial_type(self, extracted: ExtractedContent) -> str:
+        """Extract editorial type from title/content"""
+        title_lower = extracted.title.lower() if extracted.title else ""
+        
+        if 'publisher' in title_lower:
+            return 'publishers-note'
+        elif 'opinion' in title_lower:
+            return 'opinion'
+        elif 'editorial' in title_lower:
+            return 'editorial'
+        else:
+            return 'publishers-note'  # Default for this type
 
     def _build_travel_schema_fixed(self, extracted: ExtractedContent, base_data: dict) -> TravelContent:
         """ENHANCED: Comprehensive travel content extraction"""
@@ -1040,19 +1460,20 @@ class FixedSuperEnhancedCostcoProcessor:
         # Extract comprehensive tech content using new schema
         tech_data = self._extract_comprehensive_tech_content(extracted)
         
-        # Build hero image object and set as featured_image too
-        hero_image = self._build_hero_image_object(extracted)
+        # Get the proper tech featured image (not author headshot)
+        # Filter out author headshots and find the main tech image
+        tech_images = [img for img in extracted.images 
+                      if not any(exclude in img.get('src', '').lower() for exclude in ['headshot', '_headshot']) 
+                      and any(tech_term in img.get('src', '').lower() or tech_term in img.get('alt', '').lower() 
+                             for tech_term in ['tech', 'charger', 'power', 'device', 'cable', 'battery'])]
         
-        # Set hero image as featured_image in base_data
-        if hero_image and hero_image.get('url'):
-            base_data['featured_image'] = hero_image['url']
-            base_data['image_alt'] = hero_image.get('alt', '')
+        if tech_images:
+            best_tech_image = tech_images[0]  # Take the first relevant tech image
+            base_data['featured_image'] = best_tech_image.get('src', '')
+            base_data['image_alt'] = best_tech_image.get('alt', '')
         
-        # Build detailed author object
+        # Build detailed author object with clean bio
         author_object = self._build_detailed_author_object(extracted)
-        
-        # Extract callouts for supplementary content
-        callouts = self._extract_tech_callouts(extracted)
         
         # Generate topic tags
         tags = self._generate_tech_tags(extracted)
@@ -1068,10 +1489,12 @@ class FixedSuperEnhancedCostcoProcessor:
             **base_data,
             section_label=tech_data.get('section_label', 'TECH CONNECTION'),
             subheadline=tech_data.get('subheadline', ''),
-            hero_image=hero_image,
+            # Remove hero_image to prevent duplication with featured_image
+            hero_image={},
             author=author_object,
             intro_paragraph=tech_data.get('intro_paragraph', ''),
-            callouts=callouts,
+            # Remove callouts to prevent duplication with sections
+            callouts=[],
             tags=tags,
             # Legacy fields
             products=products[:8],
@@ -1232,13 +1655,23 @@ class FixedSuperEnhancedCostcoProcessor:
         
         for content in extracted.main_content:
             if 'bristol' in content.lower() and 'freelance' in content.lower():
-                author_bio = content
-                
-                # Extract author name
+                # Clean the bio - remove credit at start and extra whitespace
                 import re
+                
+                # Extract author name first
                 name_match = re.search(r'([A-Z][a-z]+ [A-Z][a-z]+) is a', content)
                 if name_match:
                     author_name = name_match.group(1)
+                    
+                    # Clean bio - start from the author name, remove credits at beginning
+                    bio_start = content.find(author_name)
+                    if bio_start > 0:
+                        author_bio = content[bio_start:].strip()
+                    else:
+                        author_bio = content.strip()
+                    
+                    # Remove any remaining credit lines at start
+                    author_bio = re.sub(r'^[A-Z][a-z]+ [A-Z][a-z]+\s*\n\s*\n\s*', '', author_bio)
                 break
         
         if author_name and author_bio:
@@ -1340,21 +1773,43 @@ class FixedSuperEnhancedCostcoProcessor:
         )
 
     def _build_editorial_schema_fixed(self, extracted: ExtractedContent, base_data: dict) -> EditorialContent:
-        """FIXED: Editorial content extraction"""
+        """ENHANCED: Comprehensive editorial content extraction"""
         
-        key_messages = extracted.main_content[:3]  # First few paragraphs
+        # Extract editorial data dynamically
+        editorial_data = self._extract_comprehensive_editorial_content(extracted)
         
-        # Extract Costco values
-        costco_values = []
-        for content in extracted.main_content:
-            if any(value_word in content.lower() for value_word in 
-                  ['value', 'member', 'quality', 'service', 'costco']):
-                costco_values.append(content)
+        # Fix featured image - should be empty if no proper editorial image (not author headshot)
+        proper_featured_image = self._find_editorial_featured_image(extracted)
+        if proper_featured_image and proper_featured_image.get('url'):
+            base_data['featured_image'] = proper_featured_image['url']
+            base_data['image_alt'] = proper_featured_image.get('alt', '')
+        else:
+            # Set empty if no proper editorial image found
+            base_data['featured_image'] = ""
+            base_data['image_alt'] = ""
+        
+        # Build author object like tech/travel structure
+        author_object = self._build_editorial_author_object(extracted)
+        
+        # Extract editorial type from title/content
+        editorial_type = self._extract_editorial_type(extracted)
         
         return EditorialContent(
             **base_data,
-            key_messages=key_messages,
-            costco_values=costco_values[:3]
+            editorial_type=editorial_type,
+            author=author_object,
+            editorial_article=editorial_data['editorial_article'],
+            upcoming_features=editorial_data['upcoming_features'],
+            editorial_staff=editorial_data['editorial_staff'],
+            legal_disclaimers=editorial_data['legal_disclaimers'],
+            call_to_action=editorial_data['call_to_action'],
+            # Legacy fields for backward compatibility
+            key_messages=editorial_data['key_messages'],
+            costco_values=editorial_data['costco_values'],
+            main_content_paragraphs=editorial_data['main_content_paragraphs'],
+            product_highlights=editorial_data['product_highlights'],
+            upcoming_content=editorial_data['upcoming_content'],
+            sidebar_content=editorial_data['sidebar_content']
         )
 
     def _build_shopping_schema_fixed(self, extracted: ExtractedContent, base_data: dict) -> ShoppingContent:

@@ -139,12 +139,25 @@ class EditorialContent(BaseContent):
     
     # Editorial specifics
     editorial_type: str = ""  # publishers-note, opinion, commentary
-    key_messages: List[str] = field(default_factory=list)
     call_to_action: str = ""
     
-    # Company focus
+    # Author details (matching tech/travel structure)
+    author: Dict[str, Union[str, Dict[str, str]]] = field(default_factory=dict)
+    
+    # Organized editorial content structure
+    editorial_article: Dict[str, Union[str, List[str]]] = field(default_factory=dict)
+    upcoming_features: Dict[str, str] = field(default_factory=dict)
+    editorial_staff: Dict[str, Union[Dict[str, str], List[str], Dict[str, Union[str, List[str]]]]] = field(default_factory=dict)
+    legal_disclaimers: List[str] = field(default_factory=list)
+    
+    # Legacy fields for backward compatibility
+    key_messages: List[str] = field(default_factory=list)
     costco_values: List[str] = field(default_factory=list)
     member_benefits: List[str] = field(default_factory=list)
+    main_content_paragraphs: List[str] = field(default_factory=list)
+    product_highlights: List[str] = field(default_factory=list)
+    upcoming_content: List[str] = field(default_factory=list)
+    sidebar_content: List[str] = field(default_factory=list)
 
 
 @dataclass
