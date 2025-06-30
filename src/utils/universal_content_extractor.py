@@ -1019,6 +1019,15 @@ class FixedUniversalContentExtractor:
                     and len(text.split()) > 3
                     and not any(skip in text.lower() for skip in ['home', 'costco', 'download', 'navigation'])
                 ):
+                    # Skip mega-instructions containing PANDOL BROS dump
+                    if (len(text) > 400 and 
+                        'PANDOL BROS' in text and 
+                        'Grape Crumble' in text and
+                        'Filling' in text and
+                        'Streusel' in text):
+                        print(f"🚫 EXTRACTOR FILTERING mega-instruction (length: {len(text)})")
+                        continue
+                    
                     # Avoid duplicates
                     if text not in instructions:
                         instructions.append(text)
@@ -1071,6 +1080,13 @@ class FixedUniversalContentExtractor:
                 and len(text.split()) > 8
             ):
 
+                # Skip mega-instructions containing PANDOL BROS dump
+                if (len(text) > 400 and 
+                    'PANDOL BROS' in text and 
+                    'Grape Crumble' in text):
+                    print(f"🚫 PARAGRAPH EXTRACTOR FILTERING mega-instruction (length: {len(text)})")
+                    continue
+                
                 # Skip navigation-like text
                 if not any(
                     nav in text.lower() for nav in ["shop", "compare", "add to cart"]

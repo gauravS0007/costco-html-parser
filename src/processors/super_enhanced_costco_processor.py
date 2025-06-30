@@ -204,6 +204,7 @@ class FixedSuperEnhancedCostcoProcessor:
         instructions = extracted.metadata.get('instructions', [])
         
         # ENHANCEMENT: Clean and reorder instructions properly  
+        logger.info(f"Raw instructions before cleaning: {len(instructions)} found")
         instructions = self._clean_recipe_instructions(instructions)
         logger.info(f"Cleaned instructions: {len(instructions)} remaining")
         
@@ -228,10 +229,50 @@ class FixedSuperEnhancedCostcoProcessor:
         
         logger.info(f"Building recipe schema: {len(ingredients)} ingredients, {len(instructions)} instructions")
         
+        # FINAL DYNAMIC FILTER: Remove mega-instructions containing ingredient dumps
+        final_instructions = []
+        for instruction in instructions[:15]:
+            instruction_clean = instruction.strip()
+            
+            # Dynamic detection of mega-instructions with ingredient dumps
+            is_mega_instruction = False
+            
+            # Check 1: Extremely long instructions (likely raw content dumps)
+            if len(instruction_clean) > 500:
+                is_mega_instruction = True
+            
+            # Check 2: Contains multiple recipe section headers
+            section_headers = ['filling', 'streusel', 'cake', 'topping', 'sauce', 'marinade', 'glaze']
+            section_count = sum(1 for header in section_headers if f'\n{header}\n' in instruction_clean.lower() or f'\n\n{header}\n\n' in instruction_clean.lower())
+            if section_count >= 2:
+                is_mega_instruction = True
+            
+            # Check 3: Contains brand names AND ingredient lists AND cooking instructions mixed
+            brand_indicators = ['INC.', 'LLC', 'CORP', 'GROWERS', 'BROS', '®', '™']
+            ingredient_indicators = ['cup', 'cups', 'tbsp', 'tsp', '⅔', '¼', '¾', '½', '⅓', '⅛']
+            cooking_indicators = ['preheat', 'mix', 'combine', 'bake', 'cook']
+            
+            has_brand = any(brand in instruction_clean for brand in brand_indicators)
+            has_ingredients = sum(1 for ing in ingredient_indicators if ing in instruction_clean.lower()) >= 3
+            has_cooking = any(cook in instruction_clean.lower() for cook in cooking_indicators)
+            
+            if has_brand and has_ingredients and has_cooking and len(instruction_clean) > 300:
+                is_mega_instruction = True
+            
+            # Check 4: Excessive line breaks (raw content formatting)
+            if instruction_clean.count('\n') > 15 and len(instruction_clean) > 300:
+                is_mega_instruction = True
+            
+            if is_mega_instruction:
+                print(f"🚫 DYNAMIC FILTER: Removing mega-instruction (length: {len(instruction_clean)}, sections: {section_count}, brand: {has_brand}, ingredients: {has_ingredients})")
+                continue
+                
+            final_instructions.append(instruction)
+        
         return RecipeContent(
             **base_data,
             ingredients=ingredients[:20],  # Reasonable limit
-            instructions=instructions[:15],
+            instructions=final_instructions,
             prep_time=prep_time,
             cook_time=cook_time,
             servings=servings,
@@ -292,6 +333,16 @@ class FixedSuperEnhancedCostcoProcessor:
         for instruction in instructions:
             instruction_clean = instruction.strip()
             
+            # PRIORITY FILTER: Skip the exact mega-instruction containing PANDOL BROS dump
+            if (len(instruction_clean) > 400 and 
+                'PANDOL BROS' in instruction_clean and 
+                'Grape Crumble' in instruction_clean and
+                'Filling' in instruction_clean and
+                'Streusel' in instruction_clean):
+                print(f"🚫 FILTERING OUT mega-instruction (length: {len(instruction_clean)})")
+                logger.info(f"🚫 FILTERING OUT mega-instruction (length: {len(instruction_clean)})")
+                continue
+            
             # Skip invalid patterns
             if any(skip_pattern in instruction_clean.lower() for skip_pattern in 
                   ['recipe -', 'recipe---', 'costco.html', 'http://', 'https://', 
@@ -302,8 +353,20 @@ class FixedSuperEnhancedCostcoProcessor:
             if instruction_clean.startswith(('PANDOL BROS', 'STEMILT GROWERS')):
                 continue
             
+            # Skip mega-instructions that contain ingredient lists + instructions combined
+            if (len(instruction_clean) > 500 and 
+                ('PANDOL BROS' in instruction_clean or 'STEMILT GROWERS' in instruction_clean) and
+                instruction_clean.count('\n') > 15):
+                continue
+            
+            # Skip content that starts with brand names and contains ingredient sections
+            if (instruction_clean.startswith(('PANDOL BROS', 'STEMILT GROWERS')) or
+                ('Grape Crumble\n\nFilling\n\n' in instruction_clean)):
+                continue
+            
             # Skip very long text dumps (likely raw content)
-            if len(instruction_clean) > 300:  # Keep reasonable limit for legitimate instructions
+            if len(instruction_clean) > 300 and not any(verb in instruction_clean.lower() for verb in 
+                ['preheat', 'mix', 'combine', 'add', 'stir', 'bake', 'cook', 'serve']):
                 continue
                 
             # Skip content that looks like ingredient lists or has multiple sections
@@ -313,18 +376,26 @@ class FixedSuperEnhancedCostcoProcessor:
                    'filling\n\n2 cups', 'streusel\n\n⅓ cup', 'cake\n\n¾ cup']):
                 continue
                 
+            # ENHANCED: Skip content with ingredient dumps mixed with instructions
+            if (len(instruction_clean) > 500 and 
+                instruction_clean.count('\n') > 15 and
+                any(ingredient_pattern in instruction_clean.lower() for ingredient_pattern in 
+                    ['cups', 'tbsp', 'tsp', '⅔ cup', '¼ cup', '¾ cup', '1½ tsp', '3 tbsp'])):
+                continue
+                
             # Skip content with too many line breaks (likely raw ingredient dump)
             if instruction_clean.count('\n') > 8:  # Much more restrictive
                 continue
                 
-            # Skip content that contains ingredient section headers
-            if any(section in instruction_clean.lower() for section in 
-                  ['filling', 'streusel', 'cake']) and len(instruction_clean) > 100:
+            # ENHANCED: Skip content that contains multiple recipe sections with measurements
+            if (any(section in instruction_clean.lower() for section in ['filling', 'streusel', 'cake']) and 
+                len(instruction_clean) > 100 and
+                any(measurement in instruction_clean for measurement in ['cup', 'tsp', 'tbsp', '⅔', '¼', '¾'])):
                 continue
                 
             # Skip raw content dumps that contain full recipe data (not actual instructions)
-            if (len(instruction_clean) > 800 and 
-                instruction_clean.count('\n') > 25 and
+            if (len(instruction_clean) > 400 and 
+                instruction_clean.count('\n') > 20 and
                 any(section in instruction_clean.lower() for section in ['filling', 'streusel', 'cake'])):
                 continue
             
@@ -2050,9 +2121,24 @@ Instructions: {len(current_instructions)} found
                 
                 # Instructions: Same conservative approach
                 extracted_instructions = getattr(content_schema, 'instructions', [])
+                logger.info(f"AI check: Found {len(extracted_instructions)} extracted instructions")
                 if len(extracted_instructions) < 1 and 'instructions' in ai_result and ai_result['instructions']:
-                    logger.info(f"AI adding instructions: {len(ai_result['instructions'])} steps")
-                    content_schema.instructions = ai_result['instructions']
+                    # Filter AI instructions to remove mega-instructions
+                    filtered_ai_instructions = []
+                    for ai_instruction in ai_result['instructions']:
+                        ai_instruction_clean = ai_instruction.strip()
+                        # Skip mega-instructions from AI
+                        if (len(ai_instruction_clean) > 400 and 
+                            'PANDOL BROS' in ai_instruction_clean and 
+                            'Grape Crumble' in ai_instruction_clean):
+                            print(f"🚫 FILTERING AI mega-instruction (length: {len(ai_instruction_clean)})")
+                            continue
+                        filtered_ai_instructions.append(ai_instruction)
+                    
+                    logger.info(f"AI adding {len(filtered_ai_instructions)} filtered instructions (removed {len(ai_result['instructions']) - len(filtered_ai_instructions)} mega-instructions)")
+                    content_schema.instructions = filtered_ai_instructions
+                else:
+                    logger.info("AI NOT overriding instructions - keeping extracted ones")
                 
                 # Timing: Only if not already extracted
                 for field in ['prep_time', 'cook_time', 'servings']:
