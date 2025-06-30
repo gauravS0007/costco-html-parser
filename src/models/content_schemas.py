@@ -62,11 +62,17 @@ class TravelContent(BaseContent):
     """Travel/vacation content schema."""
     content_type: ContentType = ContentType.TRAVEL
     
+    # Author details (matching tech structure)
+    author: Dict[str, Union[str, Dict[str, str]]] = field(default_factory=dict)
+    
     # Travel specifics
     destinations: List[str] = field(default_factory=list)
     attractions: List[str] = field(default_factory=list)
     restaurants: List[str] = field(default_factory=list)
     activities: List[str] = field(default_factory=list)
+    
+    # Additional images (Alamo, city views, etc.)
+    additional_images: List[Dict[str, str]] = field(default_factory=list)
     
     # Practical info
     best_time_to_visit: str = ""

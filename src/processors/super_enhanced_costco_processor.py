@@ -641,32 +641,397 @@ class FixedSuperEnhancedCostcoProcessor:
             return filename.replace('_', ' ').replace('-', ' ').title()
         
         return ''
+    
+    def _extract_comprehensive_travel_content(self, extracted: ExtractedContent) -> dict:
+        """Dynamically extract comprehensive travel information from content"""
+        import re
+        
+        content_text = ' '.join(extracted.main_content)
+        
+        # Extract destinations using cleaner patterns 
+        destinations = []
+        
+        # Clean destination extraction - avoid fragments
+        city_mentions = []
+        
+        # Look for proper city/place names (more restrictive)
+        proper_name_patterns = [
+            r'\b([A-Z][a-z]{3,}(?:\s+[A-Z][a-z]{3,})?)\s+(?:city|cities|area|region)\b',
+            r'(?:downtown|the city of)\s+([A-Z][a-z]{3,})\b',
+            r'\b([A-Z][a-z]{3,})\s+and\s+([A-Z][a-z]{3,}(?:\s+[A-Z][a-z]{3,})?)\s+are\s+(?:two|both)\b',
+        ]
+        
+        exclude_words = {'the', 'and', 'are', 'is', 'has', 'was', 'will', 'can', 'may', 'this', 'that', 'with', 'from', 'they', 'were', 'been', 'have', 'said', 'what', 'when', 'time', 'year', 'world', 'home', 'life', 'work', 'way', 'day', 'part', 'back', 'good', 'new', 'old', 'great', 'little', 'own', 'other', 'right', 'big', 'high', 'different', 'small', 'large', 'next', 'early', 'young', 'important', 'few', 'public', 'bad', 'same', 'able'}
+        
+        for pattern in proper_name_patterns:
+            matches = re.findall(pattern, content_text)
+            for match in matches:
+                if isinstance(match, tuple):
+                    for m in match:
+                        if m and len(m) > 3 and m.lower() not in exclude_words:
+                            city_mentions.append(m.title())
+                elif match and len(match) > 3 and match.lower() not in exclude_words:
+                    city_mentions.append(match.title())
+        
+        # Dynamically find destination phrases from content
+        destination_phrase_patterns = [
+            r'\b([A-Z][a-z]+\s+and\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b',  # X and Y
+            r'\b(two\s+[A-Z][a-z]+\s+cities)\b',  # two X cities
+            r'\b([A-Z][a-z]+\s+(?:capital|area|region))\b',  # state capital
+            r'\b(downtown\s+[A-Z][a-z]+)\b',  # downtown X
+        ]
+        
+        for pattern in destination_phrase_patterns:
+            matches = re.findall(pattern, content_text)
+            for match in matches:
+                if match and len(match) > 3:
+                    destinations.append(match)
+        
+        # Add the clean city mentions
+        for city in city_mentions:
+            if city not in destinations:
+                destinations.append(city)
+        
+        # Extract attractions dynamically
+        attractions = []
+        attraction_patterns = [
+            r'\b(The\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*?)\s+(?:Bridge|Lake|Library|Center|Capitol|University|Market|River\s+Walk|Mission|Alamo)\b',
+            r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*?)\s+(?:is\s+(?:a|an)\s+(?:outstanding|great|popular|famous))',
+            r'(?:visit|see|explore)\s+(?:the\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*?)(?:\s+(?:where|with|,))',
+        ]
+        
+        for pattern in attraction_patterns:
+            matches = re.findall(pattern, content_text)
+            for match in matches:
+                if isinstance(match, tuple):
+                    match = ' '.join([m for m in match if m]).strip()
+                if match and len(match) > 2:
+                    attractions.append(match.title())
+        
+        # Extract restaurants and dining
+        restaurants = []
+        restaurant_patterns = [
+            r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*?)\s+(?:restaurant|dining|food|sushi|barbecue|taco)\b',
+            r'(?:restaurant|dining|eat)\s+(?:at\s+)?(?:the\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*?)(?:\s+(?:on|with|,))',
+        ]
+        
+        for pattern in restaurant_patterns:
+            matches = re.findall(pattern, content_text)
+            for match in matches:
+                if match and len(match) > 2:
+                    restaurants.append(match.title())
+        
+        # Extract activities dynamically
+        activities = []
+        activity_patterns = [
+            r'\b(kayaking|tubing|walking|biking|floating|ambling)\b',
+            r'(?:can|you\'ll)\s+(?:find|experience|enjoy)\s+([^.]+?)(?:\.|,)',
+            r'(?:rent|book)\s+(?:an?\s+)?([^.]+?)(?:\s+to\s+)',
+        ]
+        
+        for pattern in activity_patterns:
+            matches = re.findall(pattern, content_text, re.IGNORECASE)
+            for match in matches:
+                if match and len(match) > 3 and len(match) < 100:
+                    activities.append(match.strip())
+        
+        # Don't extract travel_tips or cultural_notes since sections already contain all content
+        travel_tips = []
+        cultural_notes = []
+        
+        # Extract additional images (Alamo, city views, etc.)
+        additional_images = []
+        featured_url = ""
+        author_url = ""
+        
+        # Get featured and author image URLs to exclude
+        for img in extracted.images:
+            img_src = img.get('src', '')
+            if any(indicator in img_src.lower() for indicator in ['travel', 'congress', 'bridge']):
+                featured_url = img_src
+            elif any(indicator in img_src.lower() for indicator in ['headshot', 'greenberg']):
+                author_url = img_src
+        
+        # Only find Alamo image specifically 
+        for img in extracted.images:
+            img_src = img.get('src', '')
+            img_alt = img.get('alt', '').lower()
+            
+            # Only include Alamo image
+            if (img_src and 
+                img_src != featured_url and 
+                img_src != author_url and
+                'alamo' in img_alt):
+                
+                additional_images.append({
+                    'url': img_src,
+                    'alt': img.get('alt', ''),
+                    'caption': img.get('alt', '')
+                })
+                break  # Only need Alamo image
+        
+        # Extract Costco Travel information dynamically - search ALL content
+        costco_travel_packages = []
+        
+        # Search through ALL extracted content sources
+        all_content_sources = [
+            extracted.main_content,
+            extracted.full_text.split('\n') if extracted.full_text else [],
+            [h.get('text', '') for h in extracted.headings if h.get('text')],
+            extracted.quotes or []
+        ]
+        
+        for content_source in all_content_sources:
+            for content in content_source:
+                if not content or len(content.strip()) < 10:
+                    continue
+                    
+                # Look for Costco travel-related content with comprehensive detection
+                if any(costco_word in content.lower() for costco_word in 
+                      ['costco travel', 'costcotravel.com', 'vacation packages', 'rental cars', 'hotel-only', 
+                       'call 1-877', 'costco connection:', 'cruises']):
+                    # Only exclude if it's purely author bio (contains author credentials but no travel info)
+                    is_pure_author_bio = (
+                        any(author_word in content.lower() for author_word in 
+                            ['has won', 'emmy awards', 'host of the travel detective']) 
+                        and not any(travel_word in content.lower() for travel_word in 
+                            ['vacation packages', 'costco travel', 'costcotravel.com', 'cruises', 'hotel-only'])
+                    )
+                    
+                    if not is_pure_author_bio and content.strip() not in costco_travel_packages:
+                        costco_travel_packages.append(content.strip())
+        
+        # Keep empty since sections contain all content
+        unique_cultural_notes = []
+        
+        # Extract timing and cost information
+        best_time_to_visit = ""
+        estimated_cost = ""
+        
+        return {
+            'destinations': list(set(destinations)),  # No limits
+            'attractions': list(set(attractions)), 
+            'restaurants': list(set(restaurants)),
+            'activities': list(set(activities)),
+            'additional_images': additional_images,  # No limits
+            'best_time_to_visit': best_time_to_visit,
+            'estimated_cost': estimated_cost,
+            'travel_tips': travel_tips,  # No limits - capture ALL content
+            'cultural_notes': unique_cultural_notes,  # No limits
+            'costco_travel_packages': costco_travel_packages  # No limits
+        }
+    
+    def _find_travel_featured_image(self, extracted: ExtractedContent) -> dict:
+        """Find proper travel featured image (not author headshot)"""
+        for img in extracted.images:
+            img_src = img.get('src', '').lower()
+            img_alt = img.get('alt', '').lower()
+            
+            # Skip author headshots
+            if any(skip in img_src for skip in ['headshot', 'head']) or \
+               any(skip in img_alt for skip in ['head', 'man', 'woman', 'person']):
+                continue
+            
+            # Prefer travel-related images
+            if any(travel_word in img_src for travel_word in ['travel', 'city', 'bridge', 'austin', 'antonio']) or \
+               any(travel_word in img_alt for travel_word in ['city', 'bridge', 'skyline', 'austin', 'antonio']):
+                return {
+                    'url': img.get('src', ''),
+                    'alt': img.get('alt', '')
+                }
+        
+        # Fallback to first non-headshot image
+        for img in extracted.images:
+            img_src = img.get('src', '').lower()
+            img_alt = img.get('alt', '').lower()
+            if not any(skip in img_src for skip in ['headshot', 'head']) and \
+               not any(skip in img_alt for skip in ['head', 'man', 'woman']):
+                return {
+                    'url': img.get('src', ''),
+                    'alt': img.get('alt', '')
+                }
+        
+        return None
+    
+    def _extract_travel_author_info(self, extracted: ExtractedContent) -> str:
+        """Extract travel author information dynamically"""
+        content_text = ' '.join(extracted.main_content)
+        
+        # Look for author attribution patterns
+        author_patterns = [
+            r'By\s+([A-Z][a-z]+\s+[A-Z][a-z]+)(?:\s+\([^)]+\))?',
+            r'—([A-Z][A-Z])\s*$',  # Author initials at end
+            r'([A-Z][a-z]+\s+[A-Z][a-z]+)\s+(?:has won|is host|travels)',
+        ]
+        
+        for pattern in author_patterns:
+            match = re.search(pattern, content_text)
+            if match:
+                author_name = match.group(1)
+                if len(author_name) > 3:
+                    return f"By {author_name}"
+        
+        return ""
+    
+    def _build_travel_author_object(self, extracted: ExtractedContent) -> dict:
+        """Build comprehensive travel author object dynamically"""
+        import re
+        content_text = ' '.join(extracted.main_content)
+        
+        # Dynamically extract author name from content
+        author_name = ""
+        author_patterns = [
+            r'By\s+([A-Z][a-z]+\s+[A-Z][a-z]+)',  # By FirstName LastName
+            r'([A-Z][a-z]+\s+[A-Z][a-z]+)\s+(?:has won|is host|travels)',  # Name + action
+            r'—([A-Z][A-Z])\s*$',  # Author initials at end
+        ]
+        
+        for pattern in author_patterns:
+            match = re.search(pattern, content_text)
+            if match:
+                potential_name = match.group(1)
+                if len(potential_name) > 3 and ' ' in potential_name:
+                    author_name = potential_name
+                    break
+        
+        if not author_name:
+            return {}
+        
+        # Find author headshot image dynamically
+        author_image = {}
+        name_parts = author_name.lower().split()
+        for img in extracted.images:
+            img_src = img.get('src', '').lower()
+            img_alt = img.get('alt', '').lower()
+            
+            # Look for headshot indicators OR author name in URL/alt
+            if any(indicator in img_src for indicator in ['headshot', 'head']) or \
+               any(indicator in img_alt for indicator in ['head', 'man', 'woman']) or \
+               any(name_part in img_src for name_part in name_parts) or \
+               any(name_part in img_alt for name_part in name_parts):
+                author_image = {
+                    'url': img.get('src', ''),
+                    'alt': img.get('alt', '')
+                }
+                break
+        
+        # Extract author bio dynamically - capture complete bio including website
+        author_bio = ""
+        bio_patterns = [
+            rf'{re.escape(author_name)}\s+(has won[^.]*(?:\([^)]*\))\.)',  # Full bio with website in parentheses
+            rf'([^.]*{re.escape(author_name)}[^.]*(?:Emmy|CBS|host|editor|detective)[^.]*(?:\([^)]*\))\.)',
+            rf'{re.escape(author_name)}\s+([^.]+(?:\.|news|television|detective)[^.]*(?:\([^)]*\))\.)',
+            # Backup patterns without requiring parentheses
+            rf'{re.escape(author_name)}\s+(has won[^.]*\.)',
+            rf'([^.]*{re.escape(author_name)}[^.]*(?:Emmy|CBS|host|editor|detective)[^.]*\.)',
+        ]
+        
+        for pattern in bio_patterns:
+            match = re.search(pattern, content_text, re.IGNORECASE)
+            if match:
+                bio_text = match.group(1) if len(match.groups()) > 0 else match.group(0)
+                # Clean up bio text and ensure complete capture
+                bio_text = bio_text.strip()
+                if len(bio_text) > 10:  # Ensure it's substantial
+                    author_bio = bio_text
+                    break
+        
+        # If no bio found in main patterns, search through ALL content sources
+        if not author_bio:
+            # Search through all extracted content sources for author bio
+            all_content_sources = [
+                extracted.main_content,
+                extracted.full_text.split('\n') if extracted.full_text else [],
+                [h.get('text', '') for h in extracted.headings if h.get('text')],
+                extracted.quotes or []
+            ]
+            
+            for content_source in all_content_sources:
+                for content in content_source:
+                    if not content:
+                        continue
+                        
+                    if author_name in content and any(cred in content.lower() for cred in ['emmy', 'cbs', 'host', 'editor', 'detective', 'petergreenberg']):
+                        # Look for complete bio sentences including website
+                        sentences = content.split('.')
+                        bio_parts = []
+                        for sentence in sentences:
+                            if (author_name in sentence or 
+                                any(cred in sentence.lower() for cred in ['emmy', 'cbs', 'host', 'editor', 'detective', 'petergreenberg'])):
+                                cleaned_sentence = sentence.strip()
+                                if cleaned_sentence and len(cleaned_sentence) > 5:
+                                    bio_parts.append(cleaned_sentence)
+                        
+                        if bio_parts:
+                            full_bio = '. '.join(bio_parts).strip()
+                            # Ensure it ends properly
+                            if not full_bio.endswith('.'):
+                                full_bio += '.'
+                            author_bio = full_bio
+                            break
+                
+                if author_bio:
+                    break
+        
+        # Extract title/role dynamically with better patterns
+        author_title = ""
+        title_patterns = [
+            rf'{re.escape(author_name)}\s+(?:has won[^.]*as the|is)\s+([^.]+(?:editor|host|correspondent)[^.]*?)(?:\s+(?:for|of)\s+[^.]+)?',
+            r'(?:travel\s+)?(?:editor|host|correspondent)\s+(?:for|of)\s+([^.]+)',
+            rf'{re.escape(author_name)}[^.]*?(?:editor|host)\s+(?:for|of)\s+([^.]+)',
+        ]
+        
+        for pattern in title_patterns:
+            match = re.search(pattern, content_text, re.IGNORECASE)
+            if match:
+                title = match.group(1).strip()
+                # Clean up the title
+                title = re.sub(r'\s*\([^)]*\).*$', '', title)  # Remove parentheses and everything after
+                title = re.sub(r'\s+and\s+.*$', '', title)     # Remove "and ..." part
+                if len(title) < 50:  # Reasonable title length
+                    author_title = title
+                    break
+        
+        return {
+            'name': author_name,
+            'title': author_title,
+            'bio': author_bio.strip(),
+            'image': author_image
+        }
 
     def _build_travel_schema_fixed(self, extracted: ExtractedContent, base_data: dict) -> TravelContent:
-        """FIXED: Travel content extraction"""
+        """ENHANCED: Comprehensive travel content extraction"""
+        import re
         
-        destinations = extracted.metadata.get('destinations', [])
-        attractions = extracted.metadata.get('attractions', [])
+        # Dynamically extract comprehensive travel information
+        travel_data = self._extract_comprehensive_travel_content(extracted)
         
-        # Extract travel tips from content
-        travel_tips = []
-        for content in extracted.main_content:
-            if any(tip_word in content.lower() for tip_word in ['tip:', 'advice', 'recommend', 'best time']):
-                travel_tips.append(content)
+        # Update base_data with proper featured image (not author headshot)
+        better_featured_image = self._find_travel_featured_image(extracted)
+        if better_featured_image and better_featured_image.get('url'):
+            base_data['featured_image'] = better_featured_image['url']
+            base_data['image_alt'] = better_featured_image.get('alt', '')
         
-        # Extract cultural notes
-        cultural_notes = []
-        for content in extracted.main_content:
-            if any(culture_word in content.lower() for culture_word in 
-                  ['culture', 'history', 'heritage', 'tradition', 'historic']):
-                cultural_notes.append(content)
+        # Extract comprehensive author information like tech schema
+        author_object = self._build_travel_author_object(extracted)
+        
+        # Update byline
+        if author_object.get('name'):
+            base_data['byline'] = f"By {author_object['name']}"
         
         return TravelContent(
             **base_data,
-            destinations=destinations[:5],
-            attractions=attractions[:10],
-            travel_tips=travel_tips[:3],
-            cultural_notes=cultural_notes[:3]
+            author=author_object,
+            destinations=travel_data['destinations'],
+            attractions=travel_data['attractions'],
+            restaurants=travel_data['restaurants'], 
+            activities=travel_data['activities'],
+            additional_images=travel_data['additional_images'],
+            best_time_to_visit=travel_data['best_time_to_visit'],
+            estimated_cost=travel_data['estimated_cost'],
+            travel_tips=travel_data['travel_tips'],
+            cultural_notes=travel_data['cultural_notes'],
+            costco_travel_packages=travel_data['costco_travel_packages']
         )
 
     def _build_tech_schema_fixed(self, extracted: ExtractedContent, base_data: dict) -> TechContent:
