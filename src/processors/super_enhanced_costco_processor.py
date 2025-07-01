@@ -1829,22 +1829,157 @@ class FixedSuperEnhancedCostcoProcessor:
         return list(set(tags))  # Remove duplicates
 
     def _build_lifestyle_schema_fixed(self, extracted: ExtractedContent, base_data: dict) -> LifestyleContent:
-        """FIXED: Lifestyle content extraction"""
+        """ENHANCED: Comprehensive lifestyle content extraction with better image selection"""
         
-        topics = [heading['text'] for heading in extracted.headings[:8]]
+        # Fix featured image for lifestyle content - prioritize content-relevant images
+        proper_lifestyle_image = self._find_lifestyle_featured_image(extracted, base_data.get('title', ''))
+        if proper_lifestyle_image and proper_lifestyle_image.get('src'):
+            base_data['featured_image'] = proper_lifestyle_image['src']
+            base_data['image_alt'] = proper_lifestyle_image.get('alt', '')
         
-        # Extract family activities
-        family_activities = []
-        for content in extracted.main_content:
-            if any(family_word in content.lower() for family_word in 
-                  ['family', 'children', 'kids', 'celebrate', 'activity']):
-                family_activities.append(content)
+        # Extract thematic topics instead of just headings
+        topics = self._extract_lifestyle_topics(extracted, base_data.get('title', ''))
+        
+        # Extract activity-focused family activities
+        family_activities = self._extract_lifestyle_family_activities(extracted)
         
         return LifestyleContent(
             **base_data,
             topics=topics,
-            family_activities=family_activities[:5]
+            family_activities=family_activities[:8]  # Increased from 5 to 8
         )
+
+    def _find_lifestyle_featured_image(self, extracted: ExtractedContent, title: str) -> dict:
+        """Find proper lifestyle featured image with content-aware scoring"""
+        title_lower = title.lower()
+        
+        # Content-specific image priorities
+        content_keywords = {
+            'pets': ['pet', 'animal', 'cat', 'dog', 'wellness'],
+            'books': ['book', 'author', 'woman', 'man', 'writer'],
+            'halloween': ['halloween', 'costume', 'kids', 'children'],
+            'celebration': ['celebrate', 'party', 'family', 'fun'],
+            'food': ['recipe', 'food', 'cooking', 'ingredients']
+        }
+        
+        # Determine content type
+        detected_type = None
+        for content_type, keywords in content_keywords.items():
+            if any(keyword in title_lower for keyword in keywords):
+                detected_type = content_type
+                break
+        
+        best_image = None
+        best_score = 0
+        
+        for img in extracted.images:
+            img_src = img.get('src', '').lower()
+            img_alt = img.get('alt', '').lower()
+            score = img.get('score', 0)
+            
+            # Skip sidebar advertisements and irrelevant images
+            if any(skip in img_src for skip in [
+                'golf', 'travel', 'grocery', 'instacart', 'membership', 
+                'costco-next', 'pharmacy', 'savings-event'
+            ]):
+                continue
+                
+            # Skip generic promotional images
+            if any(skip in img_alt for skip in [
+                'golf', 'travel', 'tee-up', 'pharmacy', 'savings', 'instacart'
+            ]):
+                continue
+            
+            # Boost score for content-relevant images
+            if detected_type:
+                relevant_keywords = content_keywords[detected_type]
+                for keyword in relevant_keywords:
+                    if keyword in img_src or keyword in img_alt:
+                        score += 50  # Significant boost for relevant content
+                        break
+            
+            # Prioritize main content area images (connection magazine specific)
+            if 'static-us-connection' in img_src:
+                score += 30
+            
+            # Penalize obviously wrong images more heavily
+            if any(penalty in img_alt for penalty in ['pharmacy', 'costco travel', 'instacart']):
+                score -= 100
+                
+            if score > best_score:
+                best_score = score
+                best_image = img
+        
+        return best_image
+
+    def _extract_lifestyle_topics(self, extracted: ExtractedContent, title: str) -> list:
+        """Extract thematic lifestyle topics, not just headings"""
+        topics = []
+        title_lower = title.lower()
+        
+        # Add main topic based on title
+        if 'pets' in title_lower or 'animal' in title_lower:
+            topics.extend(['Pet Care', 'Animal Wellness', 'Sustainability'])
+        elif 'celebrate' in title_lower or 'halloween' in title_lower:
+            topics.extend(['Holiday Celebrations', 'Family Fun', 'Seasonal Activities'])
+        elif 'strong women' in title_lower or 'author' in title_lower:
+            topics.extend(['Books & Literature', 'Authors', 'Entertainment'])
+        elif 'food' in title_lower or 'recipe' in title_lower:
+            topics.extend(['Cooking', 'Family Meals', 'Recipes'])
+        
+        # Add topics from content analysis
+        content_text = ' '.join(extracted.main_content).lower()
+        
+        topic_keywords = {
+            'Family Activities': ['family', 'children', 'kids', 'activities'],
+            'Health & Wellness': ['health', 'wellness', 'therapy', 'benefits'],
+            'Sustainability': ['sustainability', 'environment', 'planet', 'eco'],
+            'Community': ['community', 'helping', 'donation', 'charity'],
+            'Seasonal': ['halloween', 'autumn', 'holiday', 'seasonal'],
+            'Books': ['book', 'author', 'reading', 'literature'],
+            'Cooking': ['recipe', 'cooking', 'ingredients', 'food']
+        }
+        
+        for topic, keywords in topic_keywords.items():
+            if any(keyword in content_text for keyword in keywords) and topic not in topics:
+                topics.append(topic)
+        
+        # Add some headings as topics if they're thematic
+        for heading in extracted.headings[:5]:
+            heading_text = heading['text']
+            if (len(heading_text.split()) <= 4 and 
+                not any(skip in heading_text.lower() for skip in ['inside costco', 'for your entertainment']) and
+                heading_text not in topics):
+                topics.append(heading_text)
+        
+        return topics[:8]
+    
+    def _extract_lifestyle_family_activities(self, extracted: ExtractedContent) -> list:
+        """Extract activity-focused family content"""
+        activities = []
+        
+        for content in extracted.main_content:
+            content_lower = content.lower()
+            
+            # Look for activity-related content
+            if any(activity_word in content_lower for activity_word in [
+                'activity', 'activities', 'celebrate', 'fun', 'family', 'children', 
+                'kids', 'play', 'games', 'crafts', 'contest', 'festival', 'party'
+            ]):
+                # Clean up and format the activity
+                clean_content = content.strip()
+                if len(clean_content) > 50 and clean_content not in activities:
+                    activities.append(clean_content)
+            
+            # Look for instructional content (how-to, tips)
+            elif any(instruction_word in content_lower for instruction_word in [
+                'how to', 'tips', 'ways to', 'ideas', 'suggestions', 'can also'
+            ]):
+                clean_content = content.strip()
+                if len(clean_content) > 30 and clean_content not in activities:
+                    activities.append(clean_content)
+        
+        return activities
 
     def _build_editorial_schema_fixed(self, extracted: ExtractedContent, base_data: dict) -> EditorialContent:
         """ENHANCED: Comprehensive editorial content extraction"""
