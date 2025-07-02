@@ -8,7 +8,7 @@ import re
 import logging
 import boto3
 from bs4 import BeautifulSoup
-from typing import Optional, Dict, Union
+from typing import Optional, Dict, Union, List
 from dataclasses import asdict
 
 from ..config.settings import AWS_REGION, BEDROCK_MODEL_ID, AI_CONFIG
@@ -1840,13 +1840,9 @@ class FixedSuperEnhancedCostcoProcessor:
         # Extract thematic topics instead of just headings
         topics = self._extract_lifestyle_topics(extracted, base_data.get('title', ''))
         
-        # Extract activity-focused family activities
-        family_activities = self._extract_lifestyle_family_activities(extracted)
-        
         return LifestyleContent(
             **base_data,
-            topics=topics,
-            family_activities=family_activities[:8]  # Increased from 5 to 8
+            topics=topics
         )
 
     def _find_lifestyle_featured_image(self, extracted: ExtractedContent, title: str) -> dict:
@@ -2973,6 +2969,30 @@ Instructions: {len(current_instructions)} found
                 # Add content if available
                 if 'content' in heading and heading['content']:
                     section['content'] = heading['content']
+                
+                # LIFESTYLE ONLY: Add images with captions and credits
+                if content_schema.content_type == ContentType.LIFESTYLE and 'images' in heading and heading['images']:
+                    section['images'] = []
+                    for img_data in heading['images']:
+                        # Fix image URLs for lifestyle content
+                        img_src = img_data.get('src', '')
+                        if img_src and not img_src.startswith('http'):
+                            base_url = "https://mobilecontent.costco.com"
+                            if img_src.startswith('/live/resource/img/'):
+                                img_src = f"{base_url}{img_src}"
+                            elif not img_src.startswith('http'):
+                                img_src = f"{base_url}/live/resource/img/static-us-connection-october-23/{img_src.split('/')[-1]}"
+                        
+                        section['images'].append({
+                            'src': img_src,
+                            'alt': img_data.get('alt', ''),
+                            'caption': img_data.get('caption', ''),
+                            'credit': img_data.get('credit', ''),
+                            'width': img_data.get('width', ''),
+                            'height': img_data.get('height', ''),
+                            'class': img_data.get('class', '')
+                        })
+                
                 sections.append(section)
 
         # Calculate comprehensive quality score

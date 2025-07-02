@@ -128,8 +128,7 @@ class LifestyleContent(BaseContent):
     wellness_tips: List[str] = field(default_factory=list)
     home_improvement: List[str] = field(default_factory=list)
     
-    # Family focus
-    family_activities: List[str] = field(default_factory=list)
+    # Seasonal focus
     seasonal_content: List[str] = field(default_factory=list)
 
 

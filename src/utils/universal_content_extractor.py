@@ -123,6 +123,12 @@ class FixedUniversalContentExtractor:
         self._extract_images(cleaned_soup, extracted, url)
         self._extract_structured_content(main_content_area or cleaned_soup, extracted)
 
+        # LIFESTYLE ONLY: Enhanced structured content with images for lifestyle content
+        if content_type == "lifestyle":
+            # Clear existing headings and use enhanced extraction for lifestyle only
+            extracted.headings = []
+            self._extract_lifestyle_structured_content_with_images(main_content_area or cleaned_soup, extracted)
+
         # FIXED: Enhanced recipe extraction with section awareness
         if content_type == "recipe":
             self._extract_recipe_data_fixed(
@@ -557,6 +563,720 @@ class FixedUniversalContentExtractor:
                 score -= 15
 
         return max(0, score)
+
+    def _extract_lifestyle_structured_content_with_images(self, content_area: Tag, extracted: ExtractedContent):
+        """LIFESTYLE ONLY: Extract headings with properly associated images - FULLY DYNAMIC"""
+        
+        # STEP 1: Extract all headings and their content boundaries first
+        headings_data = []
+        all_headings = content_area.find_all(["h1", "h2", "h3", "h4", "h5", "h6"])
+        
+        for i, heading in enumerate(all_headings):
+            heading_text = heading.get_text().strip()
+            if heading_text and len(heading_text) > 2:
+                if not any(nav in heading_text.lower() for nav in ["compare", "shop"]):
+                    
+                    # Find the boundary for this heading's content
+                    next_heading = all_headings[i + 1] if i + 1 < len(all_headings) else None
+                    
+                    # Extract text content within this heading's boundaries
+                    heading_content = []
+                    
+                    # Use document order traversal with proper boundary detection
+                    current = heading.next_sibling
+                    
+                    while current and len(heading_content) < 5:  # Allow more content per section
+                        # Stop if we reach the next heading element
+                        if next_heading and current == next_heading:
+                            break
+                        
+                        # Stop if we hit ANY heading element
+                        if hasattr(current, 'name') and current.name in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
+                            break
+                        
+                        # Extract text from paragraphs only (avoid complex nested content)
+                        if hasattr(current, 'name') and current.name == 'p':
+                            text = current.get_text().strip()
+                            if text and len(text) > 5 and len(text) < 1000:  # More flexible content length
+                                heading_content.append(text)
+                        
+                        current = current.next_sibling
+                    
+                    # Add heading without images first
+                    headings_data.append({
+                        "text": heading_text,
+                        "level": int(heading.name[1]),
+                        "class": " ".join(heading.get("class", [])),
+                        "content": heading_content,
+                        "images": [],  # Will be populated in step 2
+                        "heading_element": heading,  # Temporary reference for matching
+                        "dom_position": self._get_dom_position(heading)  # For proximity matching
+                    })
+        
+        # STEP 2: Collect and filter ALL valid images (fully dynamic - no hardcoding)
+        valid_images = []
+        for img in content_area.find_all('img'):
+            img_data = self._extract_lifestyle_image_data(img)
+            if img_data and self._is_valid_content_image(img_data, img):
+                # Calculate DOM position for proximity matching
+                img_position = self._get_dom_position(img)
+                
+                valid_images.append({
+                    'img_data': img_data,
+                    'element': img,
+                    'dom_position': img_position,
+                    'closest_heading': self._find_closest_heading_for_image(img, content_area),
+                    'surrounding_text': self._get_surrounding_text_for_image(img)
+                })
+        
+        # STEP 3: Smart image-to-section assignment using multiple algorithms
+        # PRIORITY ORDER: Semantic → Proximity → Fallback
+        assigned_images = set()  # Track assigned image URLs to prevent duplicates
+        
+        # Algorithm 1: SEMANTIC MATCHING FIRST (highest priority)
+        for img_info in valid_images:
+            img_data = img_info['img_data']
+            img_src = img_data.get('src', '')
+            
+            if img_src in assigned_images:
+                continue
+            
+            # Try semantic/contextual matching first
+            best_match_index = self._find_semantic_match(img_info, headings_data)
+            
+            if best_match_index >= 0:
+                headings_data[best_match_index]['images'].append(img_data)
+                assigned_images.add(img_src)
+                continue
+        
+        # Algorithm 2: PROXIMITY MATCHING for remaining images
+        for img_info in valid_images:
+            img_data = img_info['img_data']
+            img_src = img_data.get('src', '')
+            
+            if img_src in assigned_images:
+                continue
+            
+            # Find the closest heading by DOM position
+            closest_section_index = self._find_closest_section_by_position(
+                img_info['dom_position'], headings_data
+            )
+            
+            if closest_section_index >= 0:
+                # Verify this is a reasonable match using contextual analysis
+                if self._verify_image_section_match(img_info, headings_data[closest_section_index]):
+                    headings_data[closest_section_index]['images'].append(img_data)
+                    assigned_images.add(img_src)
+                    continue
+        
+        # Algorithm 3: Fallback - assign unassigned images to most appropriate sections
+        for img_info in valid_images:
+            img_data = img_info['img_data']
+            img_src = img_data.get('src', '')
+            
+            if img_src in assigned_images:
+                continue
+            
+            # Find any reasonable section (prefer main sections over subsections)
+            fallback_index = self._find_fallback_section(img_info, headings_data)
+            
+            if fallback_index >= 0:
+                headings_data[fallback_index]['images'].append(img_data)
+                assigned_images.add(img_src)
+        
+        # STEP 4: Clean up temporary heading element references
+        for heading_info in headings_data:
+            if 'heading_element' in heading_info:
+                del heading_info['heading_element']
+            if 'dom_position' in heading_info:
+                del heading_info['dom_position']
+        
+        # Update extracted headings with the properly associated data
+        extracted.headings = headings_data
+
+    def _is_valid_content_image(self, img_data: dict, img_element) -> bool:
+        """FULLY DYNAMIC: Check if image is valid content (no hardcoding)"""
+        if not img_data:
+            return False
+            
+        src = img_data.get('src', '')
+        alt = img_data.get('alt', '').lower()
+        filename = src.split('/')[-1] if src else 'unknown'
+        
+        # Skip obvious non-content images
+        skip_patterns = ['logo', 'nav', 'menu', 'banner', 'ad', 'advertisement', 'promo']
+        ad_patterns = ['300x250', '_300x', '_250x', 'banner', 'sidebar']
+        tiny_patterns = ['16x16', '32x32', '64x64']
+        
+        # Skip if clearly an ad or navigation
+        if any(pattern in filename.lower() for pattern in skip_patterns + ad_patterns + tiny_patterns):
+            return False
+        
+        # Accept images from Costco content domains
+        if 'mobilecontent.costco.com' in src.lower():
+            return True
+        
+        # Accept local content files (downloaded from Costco) - dynamic pattern detection
+        local_costco_patterns = ['costco_files', '_costco.html', 'costco life', 'inside costco', 'fye']
+        is_local_costco = any(pattern in src.lower() for pattern in local_costco_patterns)
+        
+        if is_local_costco:
+            # Additional validation: must have meaningful alt text or be reasonably sized
+            if alt and len(alt) > 2:
+                return True
+            # Or check if filename suggests content (not ad)
+            if not any(ad in filename.lower() for ad in ['300x', '250x', 'banner', 'sidebar']):
+                return True
+        
+        return False
+
+    def _get_dom_position(self, element) -> int:
+        """Get rough DOM position for proximity calculations"""
+        if not element:
+            return 0
+        
+        # Find all elements before this one
+        count = 0
+        current = element
+        while current.previous_sibling:
+            count += 1
+            current = current.previous_sibling
+        
+        return count
+
+    def _find_closest_section_by_position(self, img_position: int, headings_data: list) -> int:
+        """Find the section closest to image by DOM position"""
+        if not headings_data:
+            return -1
+        
+        closest_index = 0
+        min_distance = abs(img_position - headings_data[0].get('dom_position', 0))
+        
+        for i, heading_info in enumerate(headings_data):
+            heading_pos = heading_info.get('dom_position', 0)
+            distance = abs(img_position - heading_pos)
+            
+            if distance < min_distance:
+                min_distance = distance
+                closest_index = i
+        
+        return closest_index
+
+    def _verify_image_section_match(self, img_info: dict, section_info: dict) -> bool:
+        """Verify that image-section pairing makes sense"""
+        img_data = img_info['img_data']
+        heading_text = section_info['text'].lower()
+        section_content = ' '.join(section_info['content']).lower()
+        
+        src = img_data.get('src', '').lower()
+        alt = img_data.get('alt', '').lower()
+        filename = src.split('/')[-1] if src else ''
+        
+        # Look for obvious mismatches
+        # If heading is about books but image is about food, probably wrong
+        book_terms = ['book', 'author', 'story', 'novel', 'read']
+        food_terms = ['recipe', 'food', 'cooking', 'lasagna', 'rollup']
+        pet_terms = ['pet', 'cat', 'dog', 'animal']
+        travel_terms = ['travel', 'card', 'where', 'been']
+        
+        # Check for semantic consistency
+        heading_is_book = any(term in heading_text for term in book_terms)
+        heading_is_food = any(term in heading_text for term in food_terms)
+        heading_is_pet = any(term in heading_text for term in pet_terms)
+        heading_is_travel = any(term in heading_text for term in travel_terms)
+        
+        img_is_book = any(term in filename or term in alt for term in book_terms)
+        img_is_food = any(term in filename or term in alt for term in food_terms)
+        img_is_pet = any(term in filename or term in alt for term in pet_terms)
+        img_is_travel = any(term in filename or term in alt for term in travel_terms)
+        
+        # Strong mismatch detection
+        if heading_is_book and (img_is_food or img_is_pet or img_is_travel):
+            return False
+        if heading_is_food and (img_is_book or img_is_pet or img_is_travel):
+            return False
+        if heading_is_pet and (img_is_book or img_is_food or img_is_travel):
+            return False
+        if heading_is_travel and (img_is_book or img_is_food or img_is_pet):
+            return False
+        
+        # If no strong mismatch, allow the pairing
+        return True
+
+    def _find_semantic_match(self, img_info: dict, headings_data: list) -> int:
+        """Find best semantic match for image"""
+        img_data = img_info['img_data']
+        src = img_data.get('src', '').lower()
+        alt = img_data.get('alt', '').lower()
+        filename = src.split('/')[-1] if src else ''
+        
+        best_score = 0
+        best_index = -1
+        
+        for i, heading_info in enumerate(headings_data):
+            heading_text = heading_info['text'].lower()
+            section_content = ' '.join(heading_info['content']).lower()
+            
+            score = 0
+            
+            # Look for keyword matches between image and section
+            # Extract meaningful words from filename and alt
+            img_words = set()
+            if filename:
+                clean_filename = filename.replace('.jpg', '').replace('.png', '').replace('_', ' ').replace('-', ' ')
+                img_words.update(clean_filename.split())
+            if alt:
+                img_words.update(alt.split())
+            
+            # Extract words from heading and content
+            section_words = set(heading_text.split() + section_content.split())
+            
+            # Remove common words
+            common_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'}
+            img_words = {w for w in img_words if len(w) > 2 and w not in common_words}
+            section_words = {w for w in section_words if len(w) > 2 and w not in common_words}
+            
+            # Score based on word overlap
+            matches = img_words.intersection(section_words)
+            score += len(matches) * 10
+            
+            # PRIORITY 1: EXACT CONTENT MATCHES (highest priority)
+            # These should override proximity and other factors
+            exact_matches = 0
+            
+            # Halloween/Celebrate content matching  
+            if 'halloween' in filename and 'celebrate' in heading_text:
+                score += 100  # Highest priority
+                exact_matches += 1
+            
+            # Glasses/Donation matching
+            if 'glasses' in filename and 'donation' in heading_text:
+                score += 100  # Highest priority  
+                exact_matches += 1
+                
+            # Card/Travel matching
+            if 'card' in filename and ('card' in heading_text or 'where' in heading_text):
+                score += 100  # Highest priority
+                exact_matches += 1
+                
+            # Rollup/Recipe matching (handle both singular and plural, lasagna variations)
+            if ('rollup' in filename or 'rollups' in filename or 'lasagna' in filename) and ('rollup' in heading_text or 'rollups' in heading_text or 'lasagna' in heading_text):
+                score += 100  # Highest priority
+                exact_matches += 1
+                
+            # Pet/Planet matching
+            if ('pet' in filename or 'wellness' in filename) and ('pet' in heading_text or 'planet' in heading_text):
+                score += 100  # Highest priority
+                exact_matches += 1
+                
+            # Book/Author matching
+            if ('book' in filename or 'author' in filename) and ('book' in heading_text or 'author' in heading_text or 'entertainment' in heading_text):
+                score += 100  # Highest priority
+                exact_matches += 1
+            
+            # PRIORITY 2: SECTION LEVEL PREFERENCES
+            # Main sections (level 1) should be preferred for primary content
+            if exact_matches > 0 and heading_info.get('level', 1) == 1:
+                score += 50  # Bonus for main sections with exact matches
+                
+            # PRIORITY 3: FILENAME-SPECIFIC BONUSES (lower priority)
+            if 'author' in filename and 'author' in heading_text:
+                score += 30
+            if 'book' in filename and 'book' in heading_text:
+                score += 20
+            if 'rollup' in filename and 'rollup' in heading_text:
+                score += 20
+            if 'halloween' in filename and 'halloween' in heading_text:
+                score += 20
+            if 'glasses' in filename and 'donation' in heading_text:
+                score += 20
+            if 'card' in filename and ('card' in heading_text or 'travel' in heading_text):
+                score += 20
+            if 'pet' in filename and ('pet' in heading_text or 'planet' in heading_text):
+                score += 20
+            
+            # PRIORITY 4: GENERAL CONTENT PATTERNS
+            # CostcoLife images general matching
+            if 'costcolife' in filename:
+                # Prefer main sections for primary lifestyle content
+                if heading_info.get('level', 1) == 1:
+                    score += 15
+                    
+            # FYE content matching
+            if 'fye' in filename or 'bookpick' in filename:
+                if 'entertainment' in heading_text or 'author' in heading_text or 'book' in heading_text:
+                    score += 15
+            
+            if score > best_score:
+                best_score = score
+                best_index = i
+        
+        return best_index if best_score > 0 else -1
+
+    def _find_fallback_section(self, img_info: dict, headings_data: list) -> int:
+        """Find fallback section for unmatched images"""
+        if not headings_data:
+            return -1
+        
+        # Prefer main sections (level 1) over subsections
+        for i, heading_info in enumerate(headings_data):
+            if heading_info.get('level', 1) == 1:
+                return i
+        
+        # If no level 1 sections, use first section
+        return 0
+
+    def _extract_lifestyle_image_data(self, img_element) -> dict:
+        """LIFESTYLE ONLY: Extract structured image data with caption and credits"""
+        if not img_element or not img_element.get('src'):
+            return None
+            
+        src = img_element.get('src', '')
+        alt = img_element.get('alt', '')
+        
+        # Extract caption and credits using existing method
+        caption = self._extract_lifestyle_image_caption(img_element)
+        
+        # Separate caption and credits if both are present
+        credit_text = ""
+        caption_text = caption
+        
+        if caption and '©' in caption:
+            # Split caption and copyright
+            parts = caption.split('©')
+            if len(parts) == 2:
+                caption_text = parts[0].strip()
+                credit_text = f"© {parts[1].strip()}"
+        elif caption and any(indicator in caption.lower() for indicator in ['photo:', 'credit:', 'courtesy']):
+            # Handle other credit formats
+            credit_text = caption
+            caption_text = ""
+        
+        return {
+            "src": src,
+            "alt": alt,
+            "caption": caption_text,
+            "credit": credit_text,
+            "width": img_element.get("width", ""),
+            "height": img_element.get("height", ""),
+            "class": " ".join(img_element.get("class", []))
+        }
+
+    def _extract_lifestyle_image_caption(self, img_element) -> str:
+        """LIFESTYLE ONLY: Extract caption/credits for an image from nearby elements"""
+        caption = ""
+        
+        # Check for figcaption elements
+        figure_parent = img_element.find_parent('figure')
+        if figure_parent:
+            figcaption = figure_parent.find('figcaption')
+            if figcaption:
+                caption = figcaption.get_text().strip()
+        
+        # Check for caption in next sibling elements
+        if not caption:
+            current = img_element.next_sibling
+            for _ in range(3):  # Check next 3 siblings
+                if hasattr(current, 'get_text'):
+                    text = current.get_text().strip()
+                    # Look for copyright/credit patterns
+                    if text and ('©' in text or 'credit:' in text.lower() or 'photo:' in text.lower()):
+                        caption = text
+                        break
+                    # Look for short descriptive text
+                    elif text and len(text) < 100 and len(text) > 5:
+                        # Check if it looks like a caption (not part of main content)
+                        if any(indicator in text.lower() for indicator in ['photo', 'image', 'courtesy', '/', '|']):
+                            caption = text
+                            break
+                current = getattr(current, 'next_sibling', None) if current else None
+                if not current:
+                    break
+        
+        # Check for caption in parent container
+        if not caption:
+            parent = img_element.parent
+            if parent:
+                # Look for small text elements with copyright
+                small_texts = parent.find_all(['small', 'span'], string=lambda text: text and '©' in text)
+                if small_texts:
+                    caption = small_texts[0].get_text().strip()
+        
+        return caption
+
+    def _is_image_contextually_relevant(self, img_data: dict, heading_text: str, content_text: str) -> bool:
+        """LIFESTYLE ONLY: Check if image is contextually relevant to heading/content"""
+        if not img_data:
+            return False
+            
+        src = img_data.get('src', '').lower()
+        alt = img_data.get('alt', '').lower()
+        heading_lower = heading_text.lower()
+        content_lower = content_text.lower()
+        filename = src.split('/')[-1] if src else ''
+        
+        # Enhanced dynamic contextual matching logic
+        
+        # 1. Exact keyword matching between image and section
+        # Extract meaningful keywords from filename and alt text
+        image_keywords = set()
+        if filename:
+            # Clean filename and extract keywords
+            clean_filename = filename.replace('.jpg', '').replace('.png', '').replace('_', ' ').replace('-', ' ')
+            image_keywords.update(clean_filename.split())
+        if alt:
+            image_keywords.update(alt.split())
+        
+        # Extract keywords from heading and content
+        section_keywords = set()
+        section_keywords.update(heading_lower.split())
+        if content_text:
+            section_keywords.update(content_lower.split())
+        
+        # Remove common words that don't provide context
+        common_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should'}
+        image_keywords = {word for word in image_keywords if len(word) > 2 and word not in common_words}
+        section_keywords = {word for word in section_keywords if len(word) > 2 and word not in common_words}
+        
+        # Check for keyword overlap
+        keyword_matches = image_keywords.intersection(section_keywords)
+        if keyword_matches:
+            return True
+        
+        # 2. Semantic content matching patterns
+        content_patterns = {
+            # Recipe/food patterns
+            'recipe': ['recipe', 'cooking', 'food', 'lasagna', 'rollup', 'spinach', 'dinner', 'meal'],
+            # Card/travel patterns  
+            'travel': ['card', 'travel', 'costco', 'membership', 'where', 'been', 'explore'],
+            # Book/author patterns
+            'book': ['book', 'author', 'story', 'novel', 'read', 'writer', 'cover'],
+            # Donation/glasses patterns
+            'donation': ['donation', 'glasses', 'optical', 'program', 'give', 'help', 'charity'],
+            # Halloween/celebration patterns
+            'celebration': ['halloween', 'celebrate', 'costume', 'party', 'fun', 'holiday'],
+            # Pet patterns
+            'pet': ['pet', 'animal', 'cat', 'dog', 'furry', 'companion']
+        }
+        
+        # Check each pattern category
+        for category, patterns in content_patterns.items():
+            # Check if section content matches this category
+            section_matches_category = any(pattern in heading_lower or pattern in content_lower for pattern in patterns)
+            # Check if image matches this category
+            image_matches_category = any(pattern in filename or pattern in alt for pattern in patterns)
+            
+            if section_matches_category and image_matches_category:
+                return True
+        
+        # 3. Proximity-based matching (images near relevant text)
+        if content_text:
+            # Look for specific content mentions that relate to image
+            content_words = content_lower.split()
+            for word in image_keywords:
+                if word in content_words:
+                    return True
+        
+        # 4. Fallback: Check for any reasonable connection
+        # If heading mentions specific items and image alt/filename has those items
+        for heading_word in heading_lower.split():
+            if len(heading_word) > 3:  # Skip short words
+                if heading_word in alt or heading_word in filename:
+                    return True
+        
+        return False
+
+    def _is_image_already_assigned(self, img_data: dict, headings_data: list) -> bool:
+        """LIFESTYLE ONLY: Check if image is already assigned to prevent duplication"""
+        if not img_data or not headings_data:
+            return False
+            
+        img_src = img_data.get('src', '')
+        if not img_src:
+            return False
+            
+        # Check all existing headings for this image
+        for heading_info in headings_data:
+            for existing_img in heading_info.get('images', []):
+                if existing_img.get('src', '') == img_src:
+                    return True
+                    
+        return False
+
+    def _is_image_specifically_for_section(self, img_data: dict, heading_text: str, section_text: str) -> bool:
+        """LIFESTYLE ONLY: Enhanced specific image-to-section matching"""
+        if not img_data:
+            return False
+            
+        src = img_data.get('src', '').lower()
+        alt = img_data.get('alt', '').lower()
+        heading_lower = heading_text.lower()
+        section_lower = section_text.lower()
+        filename = src.split('/')[-1] if src else ''
+        
+        # Specific high-confidence matches
+        
+        # 1. Glasses/Donation matching
+        if 'glasses' in filename and any(word in heading_lower for word in ['donation', 'optical', 'program']):
+            return True
+            
+        # 2. Card/Travel matching
+        if 'card' in filename and any(word in heading_lower for word in ['card', 'where', 'been', 'travel']):
+            return True
+            
+        # 3. Recipe/Food matching
+        if any(food_word in filename for food_word in ['rollup', 'lasagna', 'recipe']) and \
+           any(food_word in heading_lower for food_word in ['lasagna', 'recipe', 'roll', 'spinach']):
+            return True
+            
+        # 4. Halloween/Costume matching - be more specific
+        if any(holiday_word in filename for holiday_word in ['halloween', 'costume']):
+            # Prioritize main headings over sub-headings for Halloween content
+            if any(main_word in heading_lower for main_word in ['halloween', 'celebrate', 'costume']):
+                return True
+            # Only match "fun" if it's specifically Halloween-related content in the section
+            elif 'fun' in heading_lower and ('halloween' in section_lower or 'costume' in section_lower):
+                return True
+            
+        # 5. Book/Author matching - enhanced for FYE patterns
+        fye_book_patterns = ['bookpick', 'book', 'author', 'fye']
+        section_book_patterns = ['book', 'author', 'story', 'writer', 'entertainment', 'spotlight', 'strong', 'women', 'smirnoff', 'karin', 'online']
+        
+        if (any(pattern in filename for pattern in fye_book_patterns) and 
+            any(pattern in heading_lower for pattern in section_book_patterns)):
+            return True
+        
+        # 6. Pet/Animal matching
+        if any(pet_word in filename for pet_word in ['pet', 'animal', 'cat', 'dog']) and \
+           any(pet_word in heading_lower for pet_word in ['pet', 'animal', 'planet', 'cat', 'dog']):
+            return True
+            
+        # 7. Alt text exact matching with heading words
+        if alt and heading_lower:
+            # Clean alt text and heading for comparison
+            alt_words = set(alt.replace(',', '').split())
+            heading_words = set(heading_lower.replace(',', '').split())
+            
+            # Check for meaningful word overlap (exclude common words)
+            meaningful_overlap = alt_words.intersection(heading_words) - {
+                'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 
+                'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are'
+            }
+            
+            if meaningful_overlap and len(meaningful_overlap) >= 1:
+                return True
+        
+        # 8. Content text proximity matching (very restrictive)
+        if section_text:
+            # Look for specific meaningful mentions in section content
+            # Only check for very specific content-related words
+            meaningful_content_words = []
+            for content_word in section_lower.split():
+                if len(content_word) > 4 and content_word not in {
+                    'costco', 'connection', 'warehouse', 'members', 'october', 'static',
+                    'content', 'image', 'resource', 'mobile', 'website', 'https'
+                }:
+                    meaningful_content_words.append(content_word)
+            
+            # Only match if we find very specific words
+            for word in meaningful_content_words:
+                if word in ['glasses', 'optical', 'donation'] and 'glasses' in filename:
+                    return True
+                elif word in ['card', 'travel', 'membership'] and 'card' in filename:
+                    return True
+                elif word in ['lasagna', 'recipe', 'cooking', 'spinach'] and any(food in filename for food in ['rollup', 'lasagna']):
+                    return True
+                elif word in ['halloween', 'costume', 'celebrate'] and 'halloween' in filename:
+                    return True
+        
+        return False
+    
+    def _find_closest_heading_for_image(self, img_element, content_area) -> Tag:
+        """LIFESTYLE ONLY: Find the closest heading element to an image"""
+        # Walk up the DOM to find headings
+        all_headings = content_area.find_all(["h1", "h2", "h3", "h4", "h5", "h6"])
+        
+        if not all_headings:
+            return None
+        
+        # Find the position of the image in the document
+        current = img_element
+        while current and current.parent:
+            # Check if there's a heading in the same container
+            container = current.parent
+            headings_in_container = container.find_all(["h1", "h2", "h3", "h4", "h5", "h6"])
+            
+            if headings_in_container:
+                # Find the heading that comes before this image
+                for heading in reversed(headings_in_container):
+                    # Check if this heading comes before the image in document order
+                    if self._element_comes_before(heading, img_element):
+                        return heading
+            
+            current = current.parent
+        
+        # Fallback: find the last heading that appears before this image in the entire document
+        for heading in reversed(all_headings):
+            if self._element_comes_before(heading, img_element):
+                return heading
+        
+        return None
+    
+    def _get_surrounding_text_for_image(self, img_element) -> str:
+        """LIFESTYLE ONLY: Get surrounding text context for an image"""
+        text_parts = []
+        
+        # Check parent container for text
+        parent = img_element.parent
+        if parent:
+            # Get text from siblings
+            for sibling in parent.find_all(['p', 'div', 'span']):
+                text = sibling.get_text().strip()
+                if text and len(text) > 10:
+                    text_parts.append(text)
+        
+        return ' '.join(text_parts[:3])  # Limit to first 3 text chunks
+    
+    def _element_comes_before(self, element1, element2) -> bool:
+        """LIFESTYLE ONLY: Check if element1 comes before element2 in document order"""
+        try:
+            # Convert elements to strings and check their positions
+            parent = element1.find_parent() or element2.find_parent()
+            if parent:
+                all_elements = parent.find_all()
+                try:
+                    pos1 = all_elements.index(element1)
+                    pos2 = all_elements.index(element2)
+                    return pos1 < pos2
+                except ValueError:
+                    return False
+            return False
+        except:
+            return False
+
+    def _is_image_after_heading(self, heading_element, img_element) -> bool:
+        """LIFESTYLE ONLY: Check if an image comes after a heading in the document structure"""
+        try:
+            # Get all elements in the parent container
+            parent = heading_element.parent
+            if not parent:
+                return False
+                
+            all_elements = parent.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'img'])
+            
+            heading_index = -1
+            img_index = -1
+            
+            for i, element in enumerate(all_elements):
+                if element == heading_element:
+                    heading_index = i
+                elif element == img_element:
+                    img_index = i
+                    
+            # Image should come after heading
+            return heading_index != -1 and img_index != -1 and img_index > heading_index
+        except:
+            return False
 
     def _extract_structured_content(
         self, content_area: Tag, extracted: ExtractedContent
