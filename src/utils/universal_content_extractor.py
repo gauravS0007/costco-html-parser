@@ -1293,7 +1293,11 @@ class FixedUniversalContentExtractor:
                     heading_content = []
                     current = heading.next_sibling
                     
-                    while current and len(heading_content) < 3:  # Limit to 3 items per heading
+                    # Dynamic limits based on content type
+                    content_limit = 8 if extracted.content_type == "travel" else 3
+                    min_text_length = 15 if extracted.content_type == "travel" else 30
+                    
+                    while current and len(heading_content) < content_limit:
                         if hasattr(current, 'name'):
                             # Stop at next heading
                             if current.name in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
@@ -1301,7 +1305,18 @@ class FixedUniversalContentExtractor:
                             # Collect paragraph content
                             elif current.name in ['p', 'div']:
                                 text = current.get_text().strip()
-                                if text and len(text) > 30 and text not in heading_content:
+                                if text and len(text) > min_text_length and text not in heading_content:
+                                    # Enhanced boundary detection: stop if text contains heading-like content
+                                    text_lower = text.lower()
+                                    
+                                    # Check for general section separators and author info
+                                    if any(marker in text_lower for marker in ['author bio', 'peter greenberg', 'costco travel offers', 'costco connection:']):
+                                        break
+                                    
+                                    # Dynamic heading detection: if text starts with a heading pattern, it likely belongs to a new section
+                                    if self._looks_like_heading_content(text):
+                                        break
+                                        
                                     heading_content.append(text)
                         current = current.next_sibling
                     
@@ -1863,8 +1878,11 @@ class FixedUniversalContentExtractor:
             self._extract_tech_data(content_area, extracted)
 
     def _extract_travel_data(self, content_area: Tag, extracted: ExtractedContent):
-        """Extract travel-specific data"""
-
+        """Extract comprehensive travel content including all section content"""
+        
+        if not content_area:
+            return
+            
         destinations = []
         attractions = []
 
@@ -1881,6 +1899,139 @@ class FixedUniversalContentExtractor:
 
         extracted.metadata["destinations"] = list(set(destinations))[:10]
         extracted.metadata["attractions"] = attractions
+        
+        # ENHANCED: Extract ALL paragraphs more thoroughly for travel content
+        all_paragraphs = []
+        
+        # Get all text elements including those under headings
+        for element in content_area.find_all(['p', 'div', 'span', 'section']):
+            text = element.get_text().strip()
+            
+            # Skip navigation and short content
+            if (not text or len(text) < 15 or 
+                any(skip in text.lower() for skip in ['home', 'costco connection', 'download', '©', 'copyright'])):
+                continue
+                
+            # Include substantial content
+            if len(text) > 15:
+                # Check if it's new content
+                is_new = True
+                for existing in all_paragraphs:
+                    if self._text_similarity(text, existing) > 0.7:
+                        is_new = False
+                        break
+                        
+                if is_new:
+                    all_paragraphs.append(text)
+        
+        # Also extract content that follows headings (like under "Austin", "San Antonio")
+        headings = content_area.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+        for heading in headings:
+            # Get content that follows this heading
+            current = heading.next_sibling
+            section_content = []
+            
+            while current and len(section_content) < 8:  # Allow more content per section for travel
+                if hasattr(current, 'name'):
+                    # Stop at next heading
+                    if current.name in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
+                        break
+                    # Collect paragraph content
+                    elif current.name in ['p', 'div']:
+                        text = current.get_text().strip()
+                        if text and len(text) > 15 and text not in section_content:
+                            # Enhanced boundary detection: stop if text contains heading-like content or indicates new section
+                            text_lower = text.lower()
+                            
+                            # Check for general section separators and author info
+                            if any(marker in text_lower for marker in [
+                                'author bio', 'peter greenberg', 'costco travel offers', 'costco connection:'
+                            ]):
+                                break
+                            
+                            # Dynamic heading detection: if text starts with a heading pattern, it likely belongs to a new section
+                            if self._looks_like_heading_content(text):
+                                break
+                            section_content.append(text)
+                elif isinstance(current, str):
+                    text = current.strip()
+                    if text and len(text) > 15:
+                        # Check for boundary markers in string content too
+                        text_lower = text.lower()
+                        if any(marker in text_lower for marker in [
+                            'author bio', 'peter greenberg', 'costco travel offers', 'costco connection:'
+                        ]):
+                            break
+                        
+                        # Dynamic heading detection for string content
+                        if self._looks_like_heading_content(text):
+                            break
+                        section_content.append(text)
+                        
+                current = current.next_sibling
+            
+            # Add section content to main content
+            all_paragraphs.extend(section_content)
+        
+        # Remove duplicates and update main content 
+        unique_paragraphs = []
+        for para in all_paragraphs:
+            # Check if this paragraph is not already in main_content or unique_paragraphs
+            is_duplicate = False
+            for existing in extracted.main_content + unique_paragraphs:
+                if self._text_similarity(para, existing) > 0.8:
+                    is_duplicate = True
+                    break
+            if not is_duplicate:
+                unique_paragraphs.append(para)
+                
+        # Add unique paragraphs to main content
+        extracted.main_content.extend(unique_paragraphs)
+
+    def _looks_like_heading_content(self, text: str) -> bool:
+        """Dynamically detect if text looks like it belongs to a new section/heading"""
+        if not text or len(text) < 10:
+            return False
+        
+        text_lower = text.lower().strip()
+        
+        # Pattern 1: Text that looks like a heading (short, starts with capital, ends without punctuation)
+        if len(text) < 100 and text[0].isupper():
+            words = text.split()
+            # Short phrases that don't end with sentence punctuation are likely headings
+            if len(words) <= 6 and not text.strip().endswith(('.', '!', '?', ':')):
+                # At least first word is capitalized (which we already checked)
+                return True
+        
+        # Pattern 2: Text that contains heading-like keywords
+        heading_indicators = [
+            'habitat', 'section', 'overview', 'introduction', 'conclusion',
+            'background', 'features', 'benefits', 'details', 'summary'
+        ]
+        
+        # If text starts with a heading indicator and is relatively short
+        if any(text_lower.startswith(indicator) for indicator in heading_indicators):
+            if len(text) < 200:  # Headings are usually shorter
+                return True
+        
+        # Pattern 3: Text that ends with author attribution (like "—PG") 
+        # BUT only if it's short enough to be a heading, not a full paragraph
+        if text.strip().endswith(('—PG', '—DJ', '—AT', '—DLM', '—SEP')) and len(text) < 200:
+            return True
+        
+        # Pattern 4: Text that starts with a heading pattern but continues with content
+        # This handles cases like "Batty bridge habitat\nLong paragraph content..."
+        # BUT only flag it as boundary content, don't try to extract from it
+        if text[0].isupper() and '\n' in text:
+            # Check if the first line looks like a heading
+            first_line = text.split('\n')[0].strip()
+            if len(first_line) < 50:  # First line is short
+                words = first_line.split()
+                if len(words) <= 6 and not first_line.endswith(('.', '!', '?', ':')):
+                    # This is boundary content - it belongs to another section
+                    return True
+        
+        return False
 
     def _extract_tech_data(self, content_area: Tag, extracted: ExtractedContent):
         """Extract comprehensive tech content including all section content"""
