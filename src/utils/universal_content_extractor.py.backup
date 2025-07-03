@@ -1240,7 +1240,7 @@ class FixedUniversalContentExtractor:
         entities['proper_nouns'] = [word.lower() for word in proper_nouns]
         
         # Extract quoted phrases (likely titles)
-        quoted_phrases = re.findall(r'"([^"]+)"', combined_text)
+        quoted_phrases = re.findall(r'["\']([^"\']*)["\'']', combined_text)
         # Fix regex pattern
         quoted_phrases = re.findall(r'\"([^\"]+)\"', combined_text)
         entities['quoted_text'] = [phrase.lower() for phrase in quoted_phrases if len(phrase) > 3]
