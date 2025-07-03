@@ -7,9 +7,9 @@ AI-powered HTML content extraction system for Costco Connection magazine article
 ## Features
 
 - **7 Content Types**: Recipe, Travel, Tech, Lifestyle, Editorial, Shopping, Member
-- **Smart Classification**: URL patterns, keywords, and content analysis
-- **Interview Q&A**: Speaker attribution and content deduplication
-- **AI Enhancement**: AWS Bedrock integration for improved accuracy
+- **HTML Pattern Recognition**: Identifies content by analyzing HTML structure, tags, and text patterns
+- **Dynamic Extraction**: Adapts to different HTML layouts without hardcoded selectors
+- **AI Enhancement**: AWS Bedrock integration for improved content understanding and accuracy
 
 ## Quick Start
 
@@ -19,10 +19,17 @@ cd costco-html-parser
 pip install -r requirements.txt
 ```
 
-### Environment Setup
+### Requirements
+- HTML files (place in `data/input/` directory)
+- AWS credentials configured (for AI enhancement)
+- Python 3.8+
+
+### Run Processing
 ```bash
-export AWS_REGION=us-east-1
-export BEDROCK_MODEL_ID=anthropic.claude-3-sonnet-20240229-v1:0
+# Process all HTML files in data/input/
+python src/main.py
+
+# Results saved to data/results/enhanced_results.json
 ```
 
 ### Basic Usage
