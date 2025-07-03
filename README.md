@@ -32,17 +32,6 @@ python src/main.py
 # Results saved to data/results/enhanced_results.json
 ```
 
-### Basic Usage
-```python
-from src.processors.super_enhanced_costco_processor import FixedSuperEnhancedCostcoProcessor
-
-processor = FixedSuperEnhancedCostcoProcessor()
-result = processor.process_content(html_content, url, filename)
-
-print(f"Type: {result.content.content_type}")
-print(f"Title: {result.content.title}")
-```
-
 ## Architecture
 
 ```
@@ -101,12 +90,6 @@ python -m pytest --cov=src tests/
 Key files:
 - `src/utils/universal_content_extractor.py` - Content detection patterns
 - `src/config/settings.py` - AWS and processing settings
-
-## Common Issues
-
-**Wrong Content Type**: Adjust patterns in `content_patterns` dictionary
-**Missing Speaker Attribution**: Verify HTML structure matches expected format
-**Performance Issues**: Disable AI enhancement for faster processing
 
 ## Contributing
 
