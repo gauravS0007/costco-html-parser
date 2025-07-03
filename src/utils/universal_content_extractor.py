@@ -91,13 +91,13 @@ class FixedUniversalContentExtractor:
             "shopping": {
                 "url_keywords": ["treasure-hunt", "buying-smart"],
                 "title_keywords": ["treasure", "buying", "smart"],
-                "content_keywords": ["product", "buying", "costco", "warehouse"],
+                "content_keywords": ["product", "buying", "costco", "warehouse", "featured products", "item", "merchandise", "installation", "dealers", "kitchen", "bathroom", "countertop"],
                 "required_score": 2,
             },
             "lifestyle": {
-                "url_keywords": ["costco-life", "fye", "supplier"],
-                "title_keywords": ["celebrate", "entertainment", "author"],
-                "content_keywords": ["lifestyle", "entertainment", "author", "book"],
+                "url_keywords": ["costco-life", "fye", "supplier", "refreshing-options"],
+                "title_keywords": ["celebrate", "entertainment", "author", "refreshing options"],
+                "content_keywords": ["lifestyle", "entertainment", "author", "book", "wellness", "health", "hydration", "water", "stay hydrated", "question", "answer", "interview"],
                 "required_score": 2,
             },
         }
@@ -594,6 +594,13 @@ class FixedUniversalContentExtractor:
         
         for i, heading in enumerate(all_headings):
             heading_text = heading.get_text().strip()
+            
+            # For interview questions in strong tags, add speaker prefix if available
+            if heading.name == 'strong' and self._is_interview_question(heading_text):
+                speaker_prefix = self._extract_speaker_prefix(heading)
+                if speaker_prefix:
+                    heading_text = f"{speaker_prefix}: {heading_text}"
+            
             if heading_text and len(heading_text) > 2:
                 if not any(nav in heading_text.lower() for nav in ["compare", "shop"]):
                     
@@ -631,12 +638,22 @@ class FixedUniversalContentExtractor:
                                 break
                             elif current.name == 'strong' and self._is_interview_question(current.get_text().strip()):
                                 break
+                            # CRITICAL: Stop if this paragraph contains the next interview question
+                            elif current.name == 'p' and self._paragraph_contains_next_question(current):
+                                break
                         
                         # Extract text from paragraphs only (avoid complex nested content)
                         if hasattr(current, 'name') and current.name == 'p':
-                            text = current.get_text().strip()
-                            if text and len(text) > 5 and len(text) < 1000:  # More flexible content length
-                                heading_content.append(text)
+                            # For interview Q&A, extract clean content excluding questions
+                            if self._paragraph_contains_interview_question(current):
+                                clean_text = self._extract_clean_paragraph_content(current)
+                                if clean_text and len(clean_text) > 5 and len(clean_text) < 1000:
+                                    heading_content.append(clean_text)
+                            else:
+                                # Regular paragraph content
+                                text = current.get_text().strip()
+                                if text and len(text) > 5 and len(text) < 1000:
+                                    heading_content.append(text)
                         
                         current = current.next_sibling
                     
@@ -813,6 +830,15 @@ class FixedUniversalContentExtractor:
                 
                 # After finding <br>, collect the answer text
                 if found_br:
+                    # Check if this is a responder name in span
+                    if hasattr(child, 'name') and child.name == 'span':
+                        span_strong = child.find('strong')
+                        if span_strong:
+                            responder_name = span_strong.get_text().strip()
+                            if self._is_speaker_abbreviation(responder_name):
+                                text_parts.append(f"{responder_name}:")
+                                continue
+                    
                     if hasattr(child, 'get_text'):
                         text = child.get_text().strip()
                         if text:
@@ -824,18 +850,12 @@ class FixedUniversalContentExtractor:
         
         result = ' '.join(text_parts).strip()
         
-        # Clean up the answer text - remove speaker initials if at start
+        # Clean up spacing and formatting
         if result:
-            # Remove patterns like "KS " or "Karin Smirnoff " from the beginning
-            # Remove common speaker patterns dynamically
-            speaker_cleanup_patterns = [
-                r'^[A-Z]{2,3}\s+',  # Remove 2-3 capital letters + space (CC, KS, etc.)
-                r'^[A-Z][a-z]+\s+[A-Z][a-z]+\s+',  # Remove First Last pattern
-            ]
-            for pattern in speaker_cleanup_patterns:
-                result = re.sub(pattern, '', result)
-                if not result.strip():  # If we removed everything, break
-                    break
+            # Clean up multiple spaces
+            result = re.sub(r'\s+', ' ', result)
+            # Ensure proper spacing after responder name colon
+            result = re.sub(r':\s*([A-Z])', r': \1', result)
         
         return result
 
@@ -871,6 +891,148 @@ class FixedUniversalContentExtractor:
         cleaned = re.sub(r'(CC|KS)\\s+([A-Z][^?]*\\?)\\s*\\1\\s+', r'\\2 ', cleaned)
         
         return cleaned
+
+    def _contains_interview_question_heading(self, element, extracted: ExtractedContent) -> bool:
+        """Check if element contains interview question that's already extracted as heading"""
+        if not element or not hasattr(element, 'find_all'):
+            return False
+        
+        # Look for strong tags in this element that are interview questions
+        strong_tags = element.find_all('strong')
+        for strong in strong_tags:
+            # Skip speaker names in spans
+            if strong.parent and strong.parent.name == 'span':
+                continue
+            
+            strong_text = strong.get_text().strip()
+            if self._is_interview_question(strong_text):
+                # Check if this question is already in headings
+                for heading in extracted.headings:
+                    if heading.get('text', '').strip() == strong_text:
+                        return True
+        
+        return False
+
+    def _extract_clean_paragraph_content(self, paragraph_element) -> str:
+        """Extract clean content from paragraph, excluding interview questions already extracted as headings"""
+        if not paragraph_element:
+            return ""
+        
+        # For interview Q&A paragraphs, extract only the answer portion
+        strong_tags = paragraph_element.find_all('strong')
+        interview_questions = []
+        
+        # Identify interview questions in this paragraph
+        for strong in strong_tags:
+            # Skip speaker names in spans
+            if strong.parent and strong.parent.name == 'span':
+                continue
+            
+            strong_text = strong.get_text().strip()
+            if self._is_interview_question(strong_text):
+                interview_questions.append(strong)
+        
+        # If this paragraph contains interview questions, extract only answer portions
+        if interview_questions:
+            answer_parts = []
+            
+            for child in paragraph_element.children:
+                # Skip the question strong tags
+                if hasattr(child, 'name') and child.name == 'strong':
+                    if any(child == q for q in interview_questions):
+                        continue
+                
+                # Handle speaker names in spans - include as responder prefix
+                if hasattr(child, 'name') and child.name == 'span':
+                    span_strong = child.find('strong')
+                    if span_strong and not self._is_interview_question(span_strong.get_text().strip()):
+                        # This is a responder name, add it as prefix
+                        responder_name = child.get_text().strip()
+                        if responder_name and not any(responder_name in part for part in answer_parts):
+                            answer_parts.append(f"{responder_name}:")
+                    continue
+                
+                # Include other content (answers)
+                if hasattr(child, 'get_text'):
+                    text = child.get_text().strip()
+                    if text and text not in ['', '\n', '\t']:
+                        answer_parts.append(text)
+                elif isinstance(child, str):
+                    text = child.strip()
+                    if text and text not in ['', '\n', '\t']:
+                        answer_parts.append(text)
+            
+            # Join parts and clean up spacing
+            result = ' '.join(answer_parts).strip()
+            
+            # Clean up multiple spaces and ensure proper spacing after responder name
+            result = re.sub(r'\s+', ' ', result)
+            result = re.sub(r':\s*([A-Z])', r': \1', result)  # Ensure space after colon
+            
+            return result
+        else:
+            # Regular paragraph, return full text
+            return paragraph_element.get_text().strip()
+
+    def _paragraph_contains_interview_question(self, paragraph_element) -> bool:
+        """Check if paragraph contains any interview question"""
+        if not paragraph_element or not hasattr(paragraph_element, 'find_all'):
+            return False
+        
+        strong_tags = paragraph_element.find_all('strong')
+        for strong in strong_tags:
+            # Skip speaker names in spans
+            if strong.parent and strong.parent.name == 'span':
+                continue
+            
+            strong_text = strong.get_text().strip()
+            if self._is_interview_question(strong_text):
+                return True
+        
+        return False
+
+    def _paragraph_contains_next_question(self, paragraph_element) -> bool:
+        """Check if paragraph contains the next interview question (for boundary detection)"""
+        return self._paragraph_contains_interview_question(paragraph_element)
+
+    def _extract_speaker_prefix(self, question_strong_tag) -> str:
+        """Extract speaker prefix (like 'CC', 'MC') that appears before interview questions"""
+        if not question_strong_tag or not question_strong_tag.parent:
+            return ""
+        
+        parent = question_strong_tag.parent
+        if parent.name != 'p':
+            return ""
+        
+        # Look for speaker prefix in the same paragraph before the question
+        # Pattern: <span><strong>CC</strong></span><strong>Question...</strong>
+        
+        # Find all span tags with strong children in this paragraph
+        for child in parent.children:
+            if hasattr(child, 'name') and child.name == 'span':
+                span_strong = child.find('strong')
+                if span_strong:
+                    speaker_text = span_strong.get_text().strip()
+                    # Check if this looks like a speaker abbreviation (CC, MC, etc.)
+                    if self._is_speaker_abbreviation(speaker_text):
+                        return speaker_text
+        
+        return ""
+
+    def _is_speaker_abbreviation(self, text: str) -> bool:
+        """Check if text looks like a speaker abbreviation (CC, MC, KS, etc.)"""
+        if not text:
+            return False
+        
+        # Common interview speaker patterns
+        speaker_patterns = [
+            r'^[A-Z]{2,3}$',  # 2-3 capital letters (CC, MC, KS, etc.)
+            r'^Costco Connection$',  # Full name
+            r'^Connection$',  # Short name
+            r'^[A-Z][a-z]+\s+[A-Z][a-z]+$',  # Full names like "Mark Campbell"
+        ]
+        
+        return any(re.match(pattern, text.strip()) for pattern in speaker_patterns)
 
     def _find_better_content_title(self, current_title: str, soup: BeautifulSoup) -> Optional[str]:
         """Find better content-focused title over section headers - works for any content type"""
