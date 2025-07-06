@@ -50,7 +50,7 @@ Thumbs.db
 # Project specific
 data/html_files/*.html
 data/html_files/*.htm
-data/results/*.json
+
 logs/
 *.log
 
