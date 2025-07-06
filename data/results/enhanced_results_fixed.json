@@ -48,7 +48,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751793030.050165,
+      "extraction_timestamp": 1751806765.2267442,
       "content_type": "recipe",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -81,14 +81,14 @@
       "image_caption": "",
       "content_type": "tech",
       "tags": [
-        "USB PD",
-        "wireless charging",
-        "fast charging",
-        "chargers",
         "Costco",
-        "power delivery",
+        "Qi",
         "portable battery packs",
-        "Qi"
+        "chargers",
+        "power delivery",
+        "fast charging",
+        "wireless charging",
+        "USB PD"
       ],
       "publish_date": "",
       "section_label": "TECH CONNECTION",
@@ -164,7 +164,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751793031.437247,
+      "extraction_timestamp": 1751806766.6127849,
       "content_type": "tech",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -268,7 +268,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751793032.830627,
+      "extraction_timestamp": 1751806768.008497,
       "content_type": "lifestyle",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -411,7 +411,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751793034.221575,
+      "extraction_timestamp": 1751806769.410053,
       "content_type": "editorial",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -462,19 +462,6 @@
       }
     },
     "sections": [
-      {
-        "heading": "Inside Costco // Treasure Hunt",
-        "level": 1,
-        "content": [],
-        "images": [
-          {
-            "src": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-september-23/09_23_Treasure_Hunt.jpg",
-            "alt": "sleeper sofa",
-            "caption": "",
-            "relevance_score": 6
-          }
-        ]
-      },
       {
         "heading": "Lillian August Ella Sleeper Sofa",
         "level": 3,
@@ -607,7 +594,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751793036.021131,
+      "extraction_timestamp": 1751806771.081385,
       "content_type": "shopping",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -651,30 +638,30 @@
         }
       },
       "destinations": [
+        "Texas",
         "Austin area",
         "Austin",
-        "two Texas cities",
         "Austin and San Antonio",
-        "downtown River",
+        "downtown Austin",
+        "two Texas cities",
         "River",
-        "Texas",
-        "downtown Austin"
+        "downtown River"
       ],
       "attractions": [
+        "Congress Avenue",
+        "Travel Connection Congress Avenue",
         "Presidential",
         "Lady Bird",
-        "Congress Avenue",
-        "Harry Ransom",
-        "Travel Connection Congress Avenue"
+        "Harry Ransom"
       ],
       "restaurants": [
-        "Savor",
-        "Mex"
+        "Mex",
+        "Savor"
       ],
       "activities": [
-        "inner tube",
         "kayaking",
-        "ambling"
+        "ambling",
+        "inner tube"
       ],
       "additional_images": [
         {
@@ -740,7 +727,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751793037.40348,
+      "extraction_timestamp": 1751806772.475934,
       "content_type": "travel",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -853,7 +840,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751793038.953225,
+      "extraction_timestamp": 1751806773.852437,
       "content_type": "member",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -920,7 +907,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751793040.3122098,
+      "extraction_timestamp": 1751806775.3101351,
       "content_type": "recipe",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -940,53 +927,360 @@
   },
   {
     "url": "https://www.costco.com/October-Edition- --Costco.html",
-    "content_type": "shopping",
+    "content_type": "magazine_front_cover",
     "meta_title": "",
     "meta_description": "",
     "content": {
       "title": "October Edition",
       "headline": "October Edition",
-      "byline": "By Costco Buying Team",
+      "byline": "By Costco Connection",
       "description": "Cover Story\nSoft sell\nOnly time will tell if Squishmallows make it to infinity and beyond.",
-      "featured_image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_FYE_Author.jpg",
-      "image_alt": "author headshot",
+      "featured_image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_Cover_Story.jpg",
+      "image_alt": "2 girls holding squishmallows",
       "image_caption": "",
-      "content_type": "shopping",
+      "content_type": "magazine_front_cover",
       "tags": [],
       "publish_date": "",
-      "product_categories": [],
-      "seasonal_items": [],
-      "buying_tips": [],
-      "kirkland_signature": [],
-      "member_deals": [],
-      "warehouse_locations": [],
-      "author": {
-        "name": "Lotions & Creams",
+      "cover_story": {
         "title": "",
-        "bio": "",
-        "image": {
-          "url": "",
-          "alt": ""
+        "description": "Only time will tell if Squishmallows make it to infinity and beyond."
+      },
+      "cover_image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_Cover_Story.jpg",
+      "cover_image_alt": "2 girls holding squishmallows",
+      "in_this_issue": [
+        {
+          "title": "Publisher's Note",
+          "link": "https://www.costco.com/connection-publishers-note-october-2023.html",
+          "description": "Passion is key"
+        },
+        {
+          "title": "Member Comments",
+          "link": "https://www.costco.com/connection-member-comments-october-2023.html",
+          "description": "Talk to us"
+        },
+        {
+          "title": "Costco Life",
+          "link": "https://www.costco.com/connection-costco-life-october-2023.html",
+          "description": "Celebrate, your way"
+        },
+        {
+          "title": "Tech Connection",
+          "link": "https://www.costco.com/connection-tech-power-up-october-2023.html",
+          "description": "Power Up"
+        },
+        {
+          "title": "Travel Connection",
+          "link": "https://www.costco.com/connection-travel-connection-tale-of-two-cities-october-2023.html",
+          "description": "Tale of two cities"
+        },
+        {
+          "title": "Member Poll",
+          "link": "https://www.costco.com/connection-member-poll-look-forward-every-autumn-october-2023.html",
+          "description": "What do you look forward to every Autumn?"
         }
-      }
+      ],
+      "special_sections": [],
+      "featured_sections": [
+        {
+          "title": "Keeping your cool",
+          "link": "https://www.costco.com/connection-fyh-keeping-your-cool-october-2023.html",
+          "category": "For Your Health",
+          "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_FYH_Keeping_Cool.jpg",
+          "image_alt": "wearable device"
+        },
+        {
+          "title": "Lights, camera, eat",
+          "link": "https://www.costco.com/connection-fyt-lights-camera-eat-0ctober-2023.html",
+          "category": "For Your Table",
+          "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_FYT_Yellowstone.jpg",
+          "image_alt": "a man"
+        },
+        {
+          "title": "Picking a winner",
+          "link": "https://www.costco.com/connection-fyt-picking-a-winner-october-2023.html",
+          "category": "For Your Table",
+          "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_FYT_PastaSauce.jpg",
+          "image_alt": "tomato sauce"
+        },
+        {
+          "title": "Growing green",
+          "link": "https://www.costco.com/connection-fyt-growing-green-october-2023.html",
+          "category": "For Your Table",
+          "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_FYT_Wine.jpg",
+          "image_alt": "a woman in a vineyard"
+        },
+        {
+          "title": "Here be dragons",
+          "link": "https://www.costco.com/connection-fye-here-be-dragons-october-2023.html",
+          "category": "For Your Entertainment",
+          "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_FYE_Author.jpg",
+          "image_alt": "author headshot"
+        },
+        {
+          "title": "Power play",
+          "link": "https://www.costco.com/connection-fye-power-play-october-2023.html",
+          "category": "For Your Entertainment",
+          "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_FYE_Monopoly.jpg",
+          "image_alt": "book cover"
+        },
+        {
+          "title": "Treasure Hunt",
+          "link": "https://www.costco.com/connection-treasure-hunt-october-2023.html",
+          "category": "Inside Costco",
+          "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_Treasure_Hunt_Headphones.jpg",
+          "image_alt": "Costco Monopoly"
+        },
+        {
+          "title": "A sense of security",
+          "link": "https://www.costco.com/connection-sense-of-security-october-2023.html",
+          "category": "Inside Costco",
+          "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_IC_Mem_Services.jpg",
+          "image_alt": "resort"
+        },
+        {
+          "title": "Precious resource",
+          "link": "https://www.costco.com/connection-sustainability-precious-resource-october-2023.html",
+          "category": "Inside Costco",
+          "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_IC_Sustainability.jpg",
+          "image_alt": "resort"
+        },
+        {
+          "title": "The ulti-mutt pet provider",
+          "link": "https://www.costco.com/connection-member-connection-ultimut-pet-provider-october-2023.html",
+          "category": "Member Connection",
+          "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_Mem_Conn_main.jpg",
+          "image_alt": "a man holding a puppy"
+        },
+        {
+          "title": "Clean sweep",
+          "link": "https://www.costco.com/connection-front-cover-october-2023.html",
+          "category": "For Your Health",
+          "image": "https://mobilecontent.costco.com/October Edition  _ Costco_files/connection-logo.png",
+          "image_alt": "Costco Connection Home"
+        }
+      ],
+      "article_categories": {
+        "Publisher's Note": [
+          {
+            "title": "Publisher's Note",
+            "link": "https://www.costco.com/connection-publishers-note-october-2023.html",
+            "description": "",
+            "image": "",
+            "image_alt": ""
+          }
+        ],
+        "Member Connection": [
+          {
+            "title": "Member Comments",
+            "link": "https://www.costco.com/connection-member-comments-october-2023.html",
+            "description": "",
+            "image": "",
+            "image_alt": ""
+          },
+          {
+            "title": "Member Poll",
+            "link": "https://www.costco.com/connection-member-poll-look-forward-every-autumn-october-2023.html",
+            "description": "",
+            "image": "",
+            "image_alt": ""
+          },
+          {
+            "title": "The ulti-mutt pet provider",
+            "link": "https://www.costco.com/connection-member-connection-ultimut-pet-provider-october-2023.html",
+            "description": "",
+            "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_Mem_Conn_main.jpg",
+            "image_alt": "a man holding a puppy"
+          }
+        ],
+        "Costco Life": [
+          {
+            "title": "Costco Life",
+            "link": "https://www.costco.com/connection-costco-life-october-2023.html",
+            "description": "",
+            "image": "",
+            "image_alt": ""
+          }
+        ],
+        "Tech Connection": [
+          {
+            "title": "Tech Connection",
+            "link": "https://www.costco.com/connection-tech-power-up-october-2023.html",
+            "description": "",
+            "image": "",
+            "image_alt": ""
+          }
+        ],
+        "Travel Connection": [
+          {
+            "title": "Travel Connection",
+            "link": "https://www.costco.com/connection-travel-connection-tale-of-two-cities-october-2023.html",
+            "description": "",
+            "image": "",
+            "image_alt": ""
+          }
+        ],
+        "Inside Costco": [
+          {
+            "title": "Soft sell",
+            "link": "https://www.costco.com/connection-cover-soft-sell-october-2023.html",
+            "description": "",
+            "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_Cover_Story.jpg",
+            "image_alt": "2 girls holding squishmallows"
+          },
+          {
+            "title": "A sense of security",
+            "link": "https://www.costco.com/connection-sense-of-security-october-2023.html",
+            "description": "",
+            "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_IC_Mem_Services.jpg",
+            "image_alt": "resort"
+          },
+          {
+            "title": "Precious resource",
+            "link": "https://www.costco.com/connection-sustainability-precious-resource-october-2023.html",
+            "description": "",
+            "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_IC_Sustainability.jpg",
+            "image_alt": "resort"
+          },
+          {
+            "title": "Costco Connection",
+            "link": "https://www.costco.com/connection-front-cover-october-2023.html",
+            "description": "",
+            "image": "",
+            "image_alt": ""
+          }
+        ],
+        "Special Section": [
+          {
+            "title": "Clean sweep",
+            "link": "https://www.costco.com/connection-ss-clean-sweep-october-2023.html",
+            "description": "",
+            "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_SS_iRobot.jpg",
+            "image_alt": "robot vacuum"
+          },
+          {
+            "title": "Smokeless simplicity",
+            "link": "https://www.costco.com/connection-ss-smokeless-simplicity-october-2023.html",
+            "description": "",
+            "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_SS_Gourmia.jpg",
+            "image_alt": "foodstation"
+          },
+          {
+            "title": "Quality coating",
+            "link": "https://www.costco.com/connection-ss-quality-coating-october-2023.html",
+            "description": "",
+            "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_SS_GreenPan.jpg",
+            "image_alt": "pots and pans"
+          },
+          {
+            "title": "Buyers' picks",
+            "link": "https://www.costco.com/connection-ss-buyers-picks-october-2023.html",
+            "description": "",
+            "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_SS_Buyers_Picks.jpg",
+            "image_alt": "pan set"
+          }
+        ],
+        "For Your Health": [
+          {
+            "title": "Keeping your cool",
+            "link": "https://www.costco.com/connection-fyh-keeping-your-cool-october-2023.html",
+            "description": "",
+            "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_FYH_Keeping_Cool.jpg",
+            "image_alt": "wearable device"
+          }
+        ],
+        "For Your Table": [
+          {
+            "title": "Lights, camera, eat",
+            "link": "https://www.costco.com/connection-fyt-lights-camera-eat-october-2023.html",
+            "description": "",
+            "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_FYT_Yellowstone.jpg",
+            "image_alt": "a man"
+          },
+          {
+            "title": "Picking a winner",
+            "link": "https://www.costco.com/connection-fyt-picking-a-winner-october-2023.html",
+            "description": "",
+            "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_FYT_PastaSauce.jpg",
+            "image_alt": "tomato sauce"
+          },
+          {
+            "title": "Growing green",
+            "link": "https://www.costco.com/connection-fyt-growing-green-october-2023.html",
+            "description": "",
+            "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_FYT_Wine.jpg",
+            "image_alt": "a woman in a vineyard"
+          }
+        ],
+        "For Your Entertainment": [
+          {
+            "title": "Here be dragons",
+            "link": "https://www.costco.com/connection-fye-here-be-dragons-october-2023.html",
+            "description": "",
+            "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_FYE_Author.jpg",
+            "image_alt": "author headshot"
+          },
+          {
+            "title": "Power play",
+            "link": "https://www.costco.com/connection-fye-power-play-october-2023.html",
+            "description": "",
+            "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_FYE_Monopoly.jpg",
+            "image_alt": "book cover"
+          }
+        ],
+        "Treasure Hunt": [
+          {
+            "title": "Treasure Hunt",
+            "link": "https://www.costco.com/connection-treasure-hunt-october-2023.html",
+            "description": "",
+            "image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/10_23_LP_Treasure_Hunt_Headphones.jpg",
+            "image_alt": "Costco Monopoly"
+          }
+        ],
+        "Recipes": [
+          {
+            "title": "Spinach Lasagna Roll Ups",
+            "link": "https://www.costco.com/connection-recipe-spinach-lasagna-roll-ups-october-2023.html",
+            "description": "",
+            "image": "",
+            "image_alt": ""
+          },
+          {
+            "title": "Beth's Coffee Vodka Martini",
+            "link": "https://www.costco.com/connection-recipe-coffee-vodka-martini-october-2023.html",
+            "description": "",
+            "image": "",
+            "image_alt": ""
+          },
+          {
+            "title": "Rodeo Cowboy Caviar",
+            "link": "https://www.costco.com/connection-recipe-rodeo-cowboy-caviar-october-2023.html",
+            "description": "",
+            "image": "",
+            "image_alt": ""
+          }
+        ]
+      },
+      "issue_date": "October 2025",
+      "volume_number": "",
+      "pdf_download_link": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/US_October_Connection_2023.pdf",
+      "navigation_sections": [],
+      "subscription_info": {}
     },
     "sections": [
       {
-        "heading": "Personalized Advertising",
-        "level": 4,
-        "content": [
-          "You can opt out of cookie-based tracking for personalized, targeted advertising through our advertising partners as described below, using this toggle.   Blocking these cookies may impact your experience and some features on the site.  Your choice is specific to the device, website, and browser you are using, and is deleted when you clear your browser’s cookies. Due to changes implemented by Apple in the Safari browser, your cookie settings are only saved until you close the browser. Safari users should check cookie settings each time they use Safari to access Costco.com or other Costco services.  You can opt-out of other sharing of your personal information for marketing purposes at Your Privacy Choices.",
-          "You can opt out of cookie-based tracking for personalized, targeted advertising through our advertising partners as described below, using this toggle.   Blocking these cookies may impact your experience and some features on the site.  Your choice is specific to the device, website, and browser you are using, and is deleted when you clear your browser’s cookies. Due to changes implemented by Apple in the Safari browser, your cookie settings are only saved until you close the browser. Safari users should check cookie settings each time they use Safari to access Costco.com or other Costco services.",
-          "You can opt-out of other sharing of your personal information for marketing purposes at Your Privacy Choices."
-        ],
-        "images": []
+        "heading": "★ SPECIAL SECTION  |  For Your Home",
+        "level": 2
+      },
+      {
+        "heading": "★FEATURED SECTIONS",
+        "level": 2
       }
     ],
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751793042.0645041,
-      "content_type": "shopping",
+      "extraction_timestamp": 1751806776.9008808,
+      "content_type": "magazine_front_cover",
       "universal_extraction": true,
       "ai_enhanced": true,
       "extraction_method": "fixed_super_enhanced_conservative",
@@ -1066,7 +1360,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751793043.4319391,
+      "extraction_timestamp": 1751806778.3548312,
       "content_type": "recipe",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -1196,7 +1490,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751793044.836989,
+      "extraction_timestamp": 1751806779.7661839,
       "content_type": "lifestyle",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -1331,7 +1625,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751793046.234355,
+      "extraction_timestamp": 1751806781.182129,
       "content_type": "lifestyle",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -1468,7 +1762,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751793048.058293,
+      "extraction_timestamp": 1751806783.124903,
       "content_type": "member",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -1574,7 +1868,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751793049.4589472,
+      "extraction_timestamp": 1751806784.532593,
       "content_type": "lifestyle",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -1676,7 +1970,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751793050.997781,
+      "extraction_timestamp": 1751806786.075752,
       "content_type": "member",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -1704,8 +1998,8 @@
       "headline": "Buying Smart",
       "byline": "By Costco Buying Team",
       "description": "“You basically have a designer on your team,” says Martin. “They are well-versed in what materials are best for your purpose, not just the latest trends, and do a great job to make sure the member is happy in the long run.”",
-      "featured_image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/Andrea_Tomkins_Headshot.jpg",
-      "image_alt": "woman's head",
+      "featured_image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-september-23/09_23_IC_Buying_Smart.jpg",
+      "image_alt": "Xxxx",
       "image_caption": "",
       "content_type": "shopping",
       "tags": [],
@@ -1728,10 +2022,11 @@
     },
     "sections": [
       {
-        "heading": "Buying Smart",
+        "heading": "Upgrade your space",
         "level": 1,
         "content": [
-          "Silestone, Parisien Bleu countertop"
+          "Silestone, Parisien Bleu countertop",
+          "© Full Kitchen"
         ],
         "images": [
           {
@@ -1746,6 +2041,7 @@
         "heading": "Transform your kitchen (or bathroom) with Costco’s Countertop Installation program",
         "level": 2,
         "content": [
+          "by Andrea Tomkins",
           "The kitchen is often called the heart of the home due to its central role in our daily lives. Food is prepared, shared and consumed here, but it’s also a place for everyday living. Kitchens are versatile, multipurpose spaces that also serve as workstations for chores, crafting, schoolwork and working from home.",
           "The team behind Costco’s Countertop Installation program keenly understands that if the kitchen counter is where you are rolling out the cookie dough and helping the kids with their homework, that counter needs to be a durable, high-quality product that enhances your home’s aesthetics, functionality and value.",
           "Cosentino, the company behind Costco’s program, has been operating in North America for more than 25 years and has a presence around the globe. It focuses on natural stone, quartz and Dekton, an innovative material designed to minimize or eliminate carbon emissions throughout its life cycle (see “More about Dekton”).",
@@ -1803,25 +2099,20 @@
         "heading": "More about Dekton",
         "level": 3,
         "content": [
-          "Dekton is a high-performance material composed of a unique blend of quartz, porcelain and glass particles. It is renowned for its exceptional durability and resistance to scratches, stains, heat and UV radiation. It’s also nonporous, which means low maintenance and easy cleaning. What’s more, it is resin-free, so no need for sealers. Dekton is available in a range of colors and finishes, making it a versatile and attractive choice for kitchen or bathroom countertops that combine both aesthetic appeal and practical functionality.—AT",
+          "Dekton is a high-performance material composed of a unique blend of quartz, porcelain and glass particles. It is renowned for its exceptional durability and resistance to scratches, stains, heat and UV radiation. It’s also nonporous, which means low maintenance and easy cleaning. What’s more, it is resin-free, so no need for sealers. Dekton is available in a range of colors and finishes, making it a versatile and attractive choice for kitchen or bathroom countertops that combine both aesthetic appeal and practical functionality.—AT"
+        ],
+        "images": []
+      },
+      {
+        "heading": "About the Author",
+        "level": 3,
+        "content": [
           "Andrea Tomkins fills this month’s consumer reporter slot with this behind-the-scenes look at a Costco program. Email questions about this article to connection@costco.com ."
         ],
         "images": [
           {
             "src": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/Andrea_Tomkins_Headshot.jpg",
             "alt": "woman's head",
-            "caption": "",
-            "relevance_score": 6
-          },
-          {
-            "src": "https://mobilecontent.costco.com/Buying Smart - Upgrade your space  _ Costco_files/016_StauntonCapitol_300x250_jl.jpg",
-            "alt": "Kirkland signature logo. Men's merino wool blend socks. Click here.",
-            "caption": "",
-            "relevance_score": 6
-          },
-          {
-            "src": "https://mobilecontent.costco.com/Buying Smart - Upgrade your space  _ Costco_files/023_WellnessPetCo_300x250_jl.jpg",
-            "alt": "Your kitty deserves wellness good kitty™. $8 off. 8/30/23-9/24/23 | Limit 5. Click here",
             "caption": "",
             "relevance_score": 6
           }
@@ -1831,7 +2122,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751793052.729131,
+      "extraction_timestamp": 1751806787.634433,
       "content_type": "shopping",
       "universal_extraction": true,
       "ai_enhanced": true,

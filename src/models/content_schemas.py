@@ -18,6 +18,7 @@ class ContentType(Enum):
     SHOPPING = "shopping"
     MEMBER = "member"
     SEASONAL = "seasonal"
+    MAGAZINE_FRONT_COVER = "magazine_front_cover"
 
 
 @dataclass
@@ -203,11 +204,39 @@ class MemberContent(BaseContent):
 
 
 @dataclass
+class MagazineFrontCoverContent(BaseContent):
+    """Magazine front cover content schema for Costco Connection front pages."""
+    content_type: ContentType = ContentType.MAGAZINE_FRONT_COVER
+    
+    # Cover story information
+    cover_story: Dict[str, str] = field(default_factory=dict)  # title, description, link
+    cover_image: str = ""
+    cover_image_alt: str = ""
+    
+    # Magazine sections and article categories
+    in_this_issue: List[Dict[str, str]] = field(default_factory=list)  # article previews
+    special_sections: List[Dict[str, str]] = field(default_factory=list)  # special themed sections
+    featured_sections: List[Dict[str, str]] = field(default_factory=list)  # regular magazine sections
+    
+    # Article links organized by category
+    article_categories: Dict[str, List[Dict[str, str]]] = field(default_factory=dict)
+    
+    # Magazine metadata
+    issue_date: str = ""
+    volume_number: str = ""
+    pdf_download_link: str = ""
+    
+    # Navigation and additional content
+    navigation_sections: List[Dict[str, Union[str, List[str]]]] = field(default_factory=list)
+    subscription_info: Dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
 class EnhancedPageStructure:
     """Enhanced page structure with rich content schema."""
     url: str
     content: Union[RecipeContent, TravelContent, TechContent, LifestyleContent, 
-                   EditorialContent, ShoppingContent, MemberContent]
+                   EditorialContent, ShoppingContent, MemberContent, MagazineFrontCoverContent]
     
     # SEO and metadata
     meta_title: str = ""

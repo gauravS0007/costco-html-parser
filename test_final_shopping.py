@@ -39,7 +39,6 @@ def test_final_shopping():
         
         # Check schema duplication removal
         print(f"\n🗑️  DUPLICATION REMOVAL:")
-        print(f"   featured_products: {len(result.content.featured_products)} items")
         print(f"   product_categories: {len(result.content.product_categories)} items")
         print(f"   seasonal_items: {len(result.content.seasonal_items)} items")
         print(f"   kirkland_signature: {len(result.content.kirkland_signature)} items")
@@ -62,10 +61,10 @@ def test_final_shopping():
         print(f"   ✅ Duplication rate: {duplication_rate:.1f}%")
         print(f"   ✅ Author extracted: {'Yes' if author.get('name') else 'No'}")
         print(f"   ✅ Featured image: {'Yes' if result.content.featured_image else 'No'}")
-        print(f"   ✅ Schema cleaned: {'Yes' if len(result.content.featured_products) == 0 else 'No'}")
+        print(f"   ✅ Schema cleaned: {'Yes' if len(result.content.product_categories) == 0 else 'No'}")
         print(f"   ✅ Comment-guided sections: {'Yes' if len(result.sections) > 0 else 'No'}")
         
-        if duplication_rate == 0.0 and author.get('name') and result.content.featured_image and len(result.content.featured_products) == 0:
+        if duplication_rate == 0.0 and author.get('name') and result.content.featured_image and len(result.content.product_categories) == 0:
             print(f"\n🎉 ALL REQUIREMENTS MET - IMPLEMENTATION COMPLETE!")
         else:
             print(f"\n⚠️  Some requirements not fully met")

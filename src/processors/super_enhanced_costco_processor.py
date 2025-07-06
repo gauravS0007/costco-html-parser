@@ -15,7 +15,7 @@ from ..config.settings import AWS_REGION, BEDROCK_MODEL_ID, AI_CONFIG
 from ..utils.enhanced_content_detector import EnhancedContentDetector
 from ..models.content_schemas import (
     ContentType, EnhancedPageStructure, RecipeContent, TravelContent, 
-    TechContent, LifestyleContent, EditorialContent, ShoppingContent, MemberContent
+    TechContent, LifestyleContent, EditorialContent, ShoppingContent, MemberContent, MagazineFrontCoverContent
 )
 
 # Import the FIXED universal extractor
@@ -136,6 +136,8 @@ class FixedSuperEnhancedCostcoProcessor:
             return ContentType.SHOPPING
         elif 'costco-life' in url_lower or 'fye' in url_lower or 'strong-women' in url_lower:
             return ContentType.LIFESTYLE
+        elif 'edition' in url_lower or 'front-cover' in url_lower or 'connection-front' in url_lower:
+            return ContentType.MAGAZINE_FRONT_COVER
         
         # Priority 2: Detected type mapping
         type_mapping = {
@@ -145,7 +147,8 @@ class FixedSuperEnhancedCostcoProcessor:
             'editorial': ContentType.EDITORIAL,
             'member': ContentType.MEMBER,
             'shopping': ContentType.SHOPPING,
-            'lifestyle': ContentType.LIFESTYLE
+            'lifestyle': ContentType.LIFESTYLE,
+            'magazine_front_cover': ContentType.MAGAZINE_FRONT_COVER
         }
         
         if detected_type in type_mapping:
@@ -195,6 +198,8 @@ class FixedSuperEnhancedCostcoProcessor:
             return self._build_shopping_schema_fixed(extracted, base_data)
         elif content_type == ContentType.MEMBER:
             return self._build_member_schema_fixed(extracted, base_data)
+        elif content_type == ContentType.MAGAZINE_FRONT_COVER:
+            return self._build_magazine_front_cover_schema_fixed(extracted, base_data)
         else:
             from ..models.content_schemas import BaseContent
             return BaseContent(**base_data)
@@ -2056,9 +2061,13 @@ class FixedSuperEnhancedCostcoProcessor:
             img_src = img.get('src', '').lower()
             img_alt = img.get('alt', '').lower()
             
-            # DYNAMIC: Skip obviously wrong images (ads, icons, etc.)
-            skip_patterns = ['icon', 'logo', 'tab_icon', 'ad_', 'banner', 'wellness', 'petco', 'capitol']
+            # DYNAMIC: Skip obviously wrong images (ads, icons, author headshots, etc.)
+            skip_patterns = ['icon', 'logo', 'tab_icon', 'ad_', 'banner', 'wellness', 'petco', 'capitol', 'headshot', 'head']
             if any(skip in img_src.lower() for skip in skip_patterns):
+                continue
+            
+            # FIXED: Skip author headshots by alt text too
+            if 'head' in img_alt or 'headshot' in img_alt:
                 continue
             
             # SIMPLE: Check exact headline match in image URL
@@ -2066,22 +2075,35 @@ class FixedSuperEnhancedCostcoProcessor:
             title_slug = title_lower.replace(' ', '_').replace('-', '_')
             img_src_lower = img_src.lower()
             
-            # Priority 1: Exact headline match without numbers (e.g., "treasure_hunt.jpg")
-            if title_slug in img_src_lower and not any(num in img_src_lower for num in ['_01', '_02', '_03', '_04', '_05', '_06', '_07', '_08']):
+            # Priority 1: Main article image (buying_smart pattern)
+            if 'buying_smart' in img_src_lower and not any(num in img_src_lower for num in ['_01', '_02', '_03', '_04', '_05', '_06', '_07', '_08']):
                 score += 100
-            # Priority 2: Exact headline match with _01 (e.g., "treasure_hunt_01.jpg") 
-            elif title_slug + '_01' in img_src_lower:
+            # Priority 2: Exact headline match without numbers (e.g., "treasure_hunt.jpg")
+            elif title_slug in img_src_lower and not any(num in img_src_lower for num in ['_01', '_02', '_03', '_04', '_05', '_06', '_07', '_08']):
                 score += 90
-            # Priority 3: Exact headline match with _02
-            elif title_slug + '_02' in img_src_lower:
+            # Priority 3: Exact headline match with _01 (e.g., "treasure_hunt_01.jpg") 
+            elif title_slug + '_01' in img_src_lower:
                 score += 80
-            # Priority 4: Any other exact headline match with numbers
+            # Priority 4: Exact headline match with _02
+            elif title_slug + '_02' in img_src_lower:
+                score += 70
+            # Priority 5: Any other exact headline match with numbers
             elif title_slug in img_src_lower:
                 score += 50
             
-            # Score by image quality/size
-            if img.get('score', 0) > 0:
-                score += img.get('score', 0)
+            # FIXED: Prefer larger, high-quality images over author headshots
+            if img.get('score', 0) > 200:  # High quality main images
+                score += 50
+            elif img.get('score', 0) > 100:  # Medium quality images
+                score += 30
+                
+            # FIXED: Main image indicators
+            if 'ic_' in img_src_lower:  # "IC" often indicates main image
+                score += 40
+            
+            # Avoid sidebar images unless they're the best option
+            if 'sidebar' in img_src_lower:
+                score -= 20
             
             if score > best_score:
                 best_score = score
@@ -2859,6 +2881,56 @@ class FixedSuperEnhancedCostcoProcessor:
             member_sections=member_data.get('member_sections', [])
         )
 
+    def _build_magazine_front_cover_schema_fixed(self, extracted: ExtractedContent, base_data: dict) -> MagazineFrontCoverContent:
+        """Build magazine front cover schema with extracted article links and cover story"""
+        
+        # Extract magazine-specific content using the new extraction method
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(self._current_html_content, 'html.parser')
+        main_content_area = soup.find('main') or soup.find('body')
+        
+        magazine_data = self.universal_extractor.extract_magazine_front_cover_content(main_content_area, soup)
+        
+        # Update base_data with cover image if available
+        if magazine_data.get('cover_image'):
+            base_data['featured_image'] = magazine_data.get('cover_image')
+            base_data['image_alt'] = magazine_data.get('cover_image_alt', '')
+        
+        # Build the magazine schema
+        return MagazineFrontCoverContent(
+            **base_data,
+            cover_story=magazine_data.get('cover_story', {}),
+            cover_image=magazine_data.get('cover_image', ''),
+            cover_image_alt=magazine_data.get('cover_image_alt', ''),
+            in_this_issue=magazine_data.get('in_this_issue', []),
+            special_sections=magazine_data.get('special_sections', []),
+            featured_sections=magazine_data.get('featured_sections', []),
+            article_categories=magazine_data.get('article_categories', {}),
+            pdf_download_link=magazine_data.get('pdf_download_link', ''),
+            issue_date=self._extract_issue_date_from_title(base_data.get('title', ''))
+        )
+    
+    def _extract_issue_date_from_title(self, title: str) -> str:
+        """Extract issue date from title like 'October Edition'"""
+        import re
+        months = ['january', 'february', 'march', 'april', 'may', 'june',
+                 'july', 'august', 'september', 'october', 'november', 'december']
+        
+        title_lower = title.lower()
+        for month in months:
+            if month in title_lower:
+                # Try to find year
+                year_match = re.search(r'20\d{2}', title)
+                if year_match:
+                    return f"{month.capitalize()} {year_match.group()}"
+                else:
+                    # Extract year from context or use current year
+                    import datetime
+                    current_year = datetime.datetime.now().year
+                    return f"{month.capitalize()} {current_year}"
+        
+        return ""
+
     def _is_navigation_text_member(self, text: str) -> bool:
         """Check if text is navigation/HTML content for member pages"""
     
@@ -3089,10 +3161,16 @@ Instructions: {len(current_instructions)} found
         try:
             from bs4 import BeautifulSoup
             soup = BeautifulSoup(self._current_html_content, 'html.parser')
-            main_content_area = self.universal_extractor._find_main_content(soup)
+            
+            # FIXED: For shopping content, use the correct Bootstrap column content area
+            main_content_area = soup.find('div', class_='col-xs-12 col-md-8')
+            if not main_content_area:
+                # Fallback to original method
+                main_content_area = self.universal_extractor._find_main_content(soup)
+                
             if main_content_area:
                 sections = self.universal_extractor.extract_sections_between_headings(main_content_area, "shopping")
-                logger.info(f"✅ SHOPPING: Extracted {len(sections)} sections without duplication")
+                logger.info(f"✅ SHOPPING: Extracted {len(sections)} sections without duplication from correct content area")
                 return sections
         except Exception as e:
             logger.error(f"Shopping section extraction failed: {e}")

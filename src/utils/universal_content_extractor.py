@@ -100,6 +100,12 @@ class FixedUniversalContentExtractor:
                 "content_keywords": ["lifestyle", "entertainment", "author", "book", "wellness", "health", "hydration", "water", "stay hydrated", "question", "answer", "interview"],
                 "required_score": 2,
             },
+            "magazine_front_cover": {
+                "url_keywords": ["edition", "front-cover", "connection-front"],
+                "title_keywords": ["edition", "front cover", "costco connection"],
+                "content_keywords": ["cover story", "in this issue", "special section", "featured sections", "download the pdf", "★ in this issue", "★ special section", "★featured sections"],
+                "required_score": 2,
+            },
         }
 
     def extract_all_content(self, html_content: str, url: str) -> ExtractedContent:
@@ -482,9 +488,18 @@ class FixedUniversalContentExtractor:
                 month_name = month_names.get(month_num, "october")
                 folder = f"static-us-connection-{month_name}-{year_num}"
                 return f"https://mobilecontent.costco.com/live/resource/img/{folder}/{filename}"
-            # If no date pattern, try default October folder for headshots
+            # If no date pattern, try to extract from base URL or use generic path
             elif "_headshot" in filename.lower():
-                return f"https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/{filename}"
+                # Try to extract the date folder from the base_url if possible
+                if "static-us-connection" in base_url:
+                    return urljoin(base_url, filename)
+                else:
+                    # Use a generic recent folder path - should be made configurable
+                    import datetime
+                    current_year = datetime.datetime.now().year
+                    current_month = datetime.datetime.now().month
+                    month_name = datetime.datetime.now().strftime("%B").lower()
+                    return f"https://mobilecontent.costco.com/live/resource/img/static-us-connection-{month_name}-{str(current_year)[2:]}/{filename}"
 
         # Standard relative URL
         if src.startswith("/"):
@@ -3963,8 +3978,8 @@ class FixedUniversalContentExtractor:
 
     def extract_sections_between_headings(self, content_area: Tag, content_type: str = "shopping") -> List[Dict]:
         """
-        IMPROVED: Extract sections using HTML comments as guides
-        This follows the comment structure to eliminate duplication and find correct images
+        FIXED: Extract sections using HTML comments as strict guides
+        This follows the comment structure to eliminate duplication and correctly associate images
         SHOPPING ONLY: This method should only be used for shopping content
         """
         if not content_area:
@@ -3986,6 +4001,14 @@ class FixedUniversalContentExtractor:
         # Use HTML comments to understand section structure
         html_content = str(content_area)
         
+        # Find comment boundaries to properly separate sections
+        comment_sections = {
+            'body': ('<!-- Body -->', '<!-- /Body -->'),
+            'sidebar_no_image': ('<!-- Sidebar without Image -->', '<!-- /Sidebar without Image -->'),
+            'sidebar_with_image': ('<!-- Sidebar with Image -->', '<!-- /Sidebar with Image -->'),
+            'experts': ('<!-- Use for experts -->', '<!-- /Use for experts -->')
+        }
+        
         # For each heading, extract content based on comment boundaries
         for i, heading in enumerate(all_headings):
             heading_text = heading.get_text().strip()
@@ -4000,63 +4023,192 @@ class FixedUniversalContentExtractor:
             section_content = []
             section_images = []
             
-            # Find next heading to know where content section ends
-            next_heading = all_headings[i + 1] if i + 1 < len(all_headings) else None
-            
-            # Look for comment patterns around this heading
+            # Find the HTML position of this heading
             heading_html = str(heading)
             heading_start = html_content.find(heading_html)
             
-            if heading_start != -1:
-                # Find the content section for this heading
-                section_end = len(html_content)
-                if next_heading:
-                    next_heading_html = str(next_heading)
-                    next_start = html_content.find(next_heading_html, heading_start + len(heading_html))
-                    if next_start != -1:
-                        section_end = next_start
+            if heading_start == -1:
+                continue
                 
-                # Extract content in this section
-                section_html = html_content[heading_start:section_end]
-                
-                # Parse this section to find paragraphs and images
-                from bs4 import BeautifulSoup
-                section_soup = BeautifulSoup(section_html, 'html.parser')
-                
-                # Find paragraphs in this section only
+            # Find the next heading to determine section boundaries
+            next_heading = all_headings[i + 1] if i + 1 < len(all_headings) else None
+            section_end = len(html_content)
+            
+            if next_heading:
+                next_heading_html = str(next_heading)
+                next_start = html_content.find(next_heading_html, heading_start + len(heading_html))
+                if next_start != -1:
+                    section_end = next_start
+            
+            # Extract content in this section only
+            section_html = html_content[heading_start:section_end]
+            
+            # Determine which comment section this heading belongs to
+            section_type = 'body'  # Default
+            for comment_type, (start_comment, end_comment) in comment_sections.items():
+                if start_comment in section_html:
+                    section_type = comment_type
+                    break
+            
+            # Parse this section to find paragraphs and images
+            from bs4 import BeautifulSoup
+            section_soup = BeautifulSoup(section_html, 'html.parser')
+            
+            # Extract content based on comment type
+            if section_type == 'body':
+                # Main body content - extract paragraphs directly after heading
+                current_element = heading.next_sibling
+                while current_element and current_element != next_heading:
+                    if hasattr(current_element, 'name'):
+                        if current_element.name == 'p':
+                            text = current_element.get_text().strip()
+                            if text and len(text) > 3:
+                                # IMPROVED: Include ALL content including bylines for H1 sections
+                                if heading.name == 'h1':
+                                    # For H1, include ALL content including captions and bylines
+                                    section_content.append(text)
+                                else:
+                                    # For other headings, include bylines but skip navigation
+                                    nav_terms = ['home', 'costco connection', 'download the pdf', 'copyright']
+                                    nav_score = sum(1 for term in nav_terms if term in text.lower())
+                                    if not (len(text) < 100 and nav_score > 0):
+                                        section_content.append(text)
+                        elif current_element.name == 'img':
+                            # Check for images in this section
+                            src = current_element.get('src', '')
+                            alt = current_element.get('alt', '')
+                            if src and not self._is_ad_image(alt, src):
+                                fixed_src = self._fix_image_url(src, "https://mobilecontent.costco.com")
+                                if fixed_src:
+                                    section_images.append({
+                                        'src': fixed_src,
+                                        'alt': alt,
+                                        'caption': '',
+                                        'relevance_score': 6
+                                    })
+                    current_element = current_element.next_sibling
+                    
+                # Find images in this section only (not in subsections)
+                for img in section_soup.find_all('img'):
+                    # Skip images that are in sidebar sections
+                    img_parent = img.parent
+                    while img_parent:
+                        if img_parent.name == 'div' and 'sidebar' in str(img_parent).lower():
+                            break
+                        img_parent = img_parent.parent
+                    else:
+                        src = img.get('src', '')
+                        alt = img.get('alt', '')
+                        if src:
+                            # Filter out ad images
+                            if self._is_ad_image(alt, src):
+                                continue
+                            fixed_src = self._fix_image_url(src, "https://mobilecontent.costco.com")
+                            if fixed_src:
+                                section_images.append({
+                                    'src': fixed_src,
+                                    'alt': alt,
+                                    'caption': '',
+                                    'relevance_score': 6
+                                })
+                                
+            elif section_type == 'sidebar_with_image':
+                # Sidebar with image - extract both content and associated image
                 for p in section_soup.find_all('p'):
                     text = p.get_text().strip()
-                    if text and len(text) > 15:
-                        # Skip bylines and navigation
-                        if text.lower().startswith('by ') and len(text) < 50:
-                            continue
-                        nav_terms = ['home', 'costco connection', 'download the pdf', 'copyright', '©']
-                        nav_score = sum(1 for term in nav_terms if term in text.lower())
-                        if not (len(text) < 100 and nav_score > 0):
+                    if text and len(text) > 15 and not text.startswith('©'):
+                        # Skip author bio unless this is specifically an author/expert section
+                        if ('fills this month' in text or 'email questions' in text or 
+                            'consumer reporter' in text or 'behind-the-scenes' in text):
+                            # This is author bio content - only include in author sections
+                            if ('author' in heading_text.lower() or 'expert' in heading_text.lower() or
+                                'about' in heading_text.lower() and len(section_content) == 0):
+                                section_content.append(text)
+                            # Skip author bio for product/material sections
+                        else:
                             section_content.append(text)
                 
-                # Find images in this section
+                # Find images specifically in this sidebar
                 for img in section_soup.find_all('img'):
                     src = img.get('src', '')
                     alt = img.get('alt', '')
                     if src:
-                        # Fix URL using the same logic as the main extractor
+                        # Filter out ad images
+                        if self._is_ad_image(alt, src):
+                            continue
                         fixed_src = self._fix_image_url(src, "https://mobilecontent.costco.com")
                         if fixed_src:
                             section_images.append({
                                 'src': fixed_src,
                                 'alt': alt,
                                 'caption': '',
-                                'relevance_score': 6  # Base score
+                                'relevance_score': 6
                             })
+                            
+            elif section_type == 'sidebar_no_image':
+                # Sidebar without image - extract content only
+                for p in section_soup.find_all('p'):
+                    text = p.get_text().strip()
+                    if text and len(text) > 15 and not text.startswith('©'):
+                        section_content.append(text)
+                        
+            elif section_type == 'experts':
+                # Expert section - extract author info and image
+                for p in section_soup.find_all('p'):
+                    text = p.get_text().strip()
+                    if text and len(text) > 15:
+                        section_content.append(text)
                 
-                # Special handling for comment-guided sections
-                if '<!-- Sidebar with Image -->' in section_html:
-                    # This section has an associated image
-                    logger.info(f"📷 Found sidebar with image for: {heading_text}")
-                elif '<!-- Sidebar without Image -->' in section_html:
-                    # This section explicitly has no image
-                    logger.info(f"📝 Found sidebar without image for: {heading_text}")
+                # Find author image only
+                for img in section_soup.find_all('img'):
+                    src = img.get('src', '')
+                    alt = img.get('alt', '')
+                    if src and ('headshot' in src.lower() or 'head' in alt.lower()):
+                        fixed_src = self._fix_image_url(src, "https://mobilecontent.costco.com")
+                        if fixed_src:
+                            section_images.append({
+                                'src': fixed_src,
+                                'alt': alt,
+                                'caption': '',
+                                'relevance_score': 6
+                            })
+            
+            # SPECIAL: For H1 sections, even if no immediate content, look for main article content
+            if level == 1 and not section_content and not section_images:
+                # Look for main article image and captions in the broader content area
+                content_parent = heading.find_parent('div')
+                while content_parent and not any('col-' in str(cls) for cls in content_parent.get('class', [])):
+                    content_parent = content_parent.find_parent('div')
+                
+                if content_parent:
+                    # Look for main article image
+                    main_images = content_parent.find_all('img')
+                    for img in main_images:
+                        src = img.get('src', '')
+                        alt = img.get('alt', '')
+                        # Look for main article images (not ads, not author headshots)
+                        if (src and 'ic_' in src.lower() and 
+                            not self._is_ad_image(alt, src) and 'headshot' not in src.lower()):
+                            fixed_src = self._fix_image_url(src, "https://mobilecontent.costco.com")
+                            if fixed_src:
+                                section_images.append({
+                                    'src': fixed_src,
+                                    'alt': alt,
+                                    'caption': '',
+                                    'relevance_score': 6
+                                })
+                                break  # Only take the main image
+                    
+                    # Look for captions and bylines
+                    paragraphs = content_parent.find_all('p')
+                    for p in paragraphs:
+                        text = p.get_text().strip()
+                        if text and len(text) > 3:
+                            # Include captions and copyright info that are likely related to main image
+                            if ('©' in text or len(text) < 100):
+                                section_content.append(text)
+                                if len(section_content) >= 2:  # Limit content
+                                    break
             
             # Create section if we have content
             if section_content or section_images:
@@ -4067,7 +4219,466 @@ class FixedUniversalContentExtractor:
                     "images": section_images
                 })
         
-        return sections
+        # Post-process sections to handle author bio content properly
+        processed_sections = []
+        author_bio_content = []
+        
+        for section in sections:
+            section_content = section.get('content', [])
+            filtered_content = []
+            
+            for content in section_content:
+                # Check if this is author bio content
+                if ('fills this month' in content or 'email questions' in content or
+                    'consumer reporter' in content or 'behind-the-scenes' in content):
+                    # This is author bio - collect it separately
+                    author_bio_content.append(content)
+                else:
+                    # This is regular section content
+                    filtered_content.append(content)
+            
+            # Update section with filtered content
+            section['content'] = filtered_content
+            processed_sections.append(section)
+        
+        # If we found author bio content, create a separate author section
+        if author_bio_content:
+            # Find author image
+            author_images = []
+            for section in processed_sections:
+                for img in section.get('images', []):
+                    if 'headshot' in img.get('src', '').lower() or 'head' in img.get('alt', '').lower():
+                        author_images.append(img)
+                        break
+            
+            # Create author section
+            processed_sections.append({
+                'heading': 'About the Author',
+                'level': 3,
+                'content': author_bio_content,
+                'images': author_images
+            })
+            
+            # Remove author images from other sections
+            for section in processed_sections[:-1]:  # Skip the author section we just added
+                section['images'] = [img for img in section.get('images', []) 
+                                   if not ('headshot' in img.get('src', '').lower() or 'head' in img.get('alt', '').lower())]
+        
+        return processed_sections
+        
+    def _is_ad_image(self, alt: str, src: str) -> bool:
+        """
+        Check if an image is an advertisement that should be filtered out
+        """
+        if not alt and not src:
+            return False
+            
+        alt_lower = alt.lower()
+        src_lower = src.lower()
+        
+        # Common ad indicators
+        ad_keywords = [
+            'kirkland signature',
+            'click here',
+            'advertisement',
+            'ad banner',
+            'promo',
+            'socks',
+            'kitty',
+            'pet food',
+            'wellness',
+            'merino wool',
+            'limit 5'
+        ]
+        
+        for keyword in ad_keywords:
+            if keyword in alt_lower or keyword in src_lower:
+                return True
+                
+        return False
+        
+    def extract_magazine_front_cover_content(self, content_area: Tag, full_soup: BeautifulSoup = None) -> Dict:
+        """
+        Extract magazine front cover content including cover story, articles, and sections
+        """
+        magazine_data = {
+            'cover_story': {},
+            'in_this_issue': [],
+            'special_sections': [],
+            'featured_sections': [],
+            'article_categories': {},
+            'pdf_download_link': '',
+            'cover_image': '',
+            'cover_image_alt': ''
+        }
+        
+        if not content_area:
+            return magazine_data
+            
+        # Extract cover story information with enhanced structure detection
+        cover_story_section = content_area.find('div', string=lambda text: text and 'cover story' in text.lower())
+        if not cover_story_section:
+            # Look for cover story in text content
+            cover_story_text = content_area.find(string=lambda text: text and 'Cover Story' in text)
+            if cover_story_text:
+                cover_story_section = cover_story_text.find_parent(['div', 'a'])
+        
+        if cover_story_section:
+            # Look for the structured cover story content
+            parent_container = cover_story_section.find_parent(['div', 'a'])
+            if parent_container:
+                # Extract title from the larger text elements
+                title_div = parent_container.find('div', style=lambda style: style and '2em' in style)
+                if title_div:
+                    magazine_data['cover_story']['title'] = title_div.get_text().strip()
+                
+                # Extract description from following content
+                desc_div = parent_container.find('div', style=lambda style: style and 'font-weight: normal' in style)
+                if desc_div:
+                    magazine_data['cover_story']['description'] = desc_div.get_text().strip()
+                
+                # Extract link from parent anchor
+                if parent_container.name == 'a':
+                    magazine_data['cover_story']['link'] = parent_container.get('href', '')
+                else:
+                    cover_link = parent_container.find('a', href=True)
+                    if cover_link:
+                        magazine_data['cover_story']['link'] = cover_link.get('href', '')
+        
+        # Extract "In This Issue" sections with enhanced description extraction
+        # Search in the full document if available, otherwise use content_area
+        search_area = full_soup if full_soup else content_area
+        in_this_issue_section = search_area.find(string=lambda text: text and 'in this issue' in text.lower())
+        if in_this_issue_section:
+            parent = in_this_issue_section.find_parent(['div', 'section'])
+            if parent:
+                # Find the actual "In This Issue" list in the sidebar
+                # Look for the specific structure in the col-md-4 sidebar
+                sidebar = search_area.find('div', class_='col-xs-12 col-md-4')
+                if sidebar:
+                    in_this_issue_container = sidebar.find('div', style=lambda style: style and 'border-top: 8px solid #54b6cc' in style)
+                    if in_this_issue_container:
+                        list_container = in_this_issue_container.find('ul')
+                        if list_container:
+                            list_items = list_container.find_all('li')
+                            for li in list_items:
+                                link = li.find('a', href=True)
+                                if link and ('/connection-' in link.get('href', '') and not link.get('href', '').endswith('.pdf')):
+                                    # Extract title and description from the link structure
+                                    link_text = link.get_text().strip()
+                                    lines = [line.strip() for line in link_text.split('\n') if line.strip()]
+                                    
+                                    if len(lines) >= 2:
+                                        title = lines[0]
+                                        description = lines[1]
+                                    elif len(lines) == 1:
+                                        title = lines[0]
+                                        description = ''
+                                    else:
+                                        continue  # Skip if no valid content
+                                    
+                                    # Also check for span with description
+                                    span_desc = li.find('span', style=lambda style: style and 'font-size: 0.8em' in style)
+                                    if span_desc and not description:
+                                        description = span_desc.get_text().strip()
+                                    
+                                    if title and len(title) > 3 and not title.startswith('Download'):  # Skip PDF download link
+                                        magazine_data['in_this_issue'].append({
+                                            'title': title,
+                                            'link': link.get('href', ''),
+                                            'description': description
+                                        })
+        
+        # Extract Special Sections
+        special_section_headers = content_area.find_all(string=lambda text: text and 'special section' in text.lower())
+        for header in special_section_headers:
+            parent = header.find_parent(['div', 'section'])
+            if parent:
+                # Find articles in this special section
+                section_links = parent.find_all('a', href=True)
+                for link in section_links:
+                    if link.get('href', '').startswith('/connection-'):
+                        title = link.get_text().strip()
+                        if title:
+                            # Look for description near the link
+                            description = ''
+                            desc_elem = link.find_next_sibling(['div', 'p', 'span'])
+                            if desc_elem:
+                                description = desc_elem.get_text().strip()
+                            
+                            magazine_data['special_sections'].append({
+                                'title': title,
+                                'link': link.get('href', ''),
+                                'description': description
+                            })
+        
+        # Extract Featured Sections from grid layout - simplified approach
+        # Look for all grid items with images and connection links
+        # Use exact class matching as the lambda approach isn't working
+        grid_items_xs6 = search_area.find_all('div', class_=['col-xs-6', 'col-md-3'])
+        grid_items_xs12 = search_area.find_all('div', class_=['col-xs-12', 'col-md-3'])
+        all_grid_items = grid_items_xs6 + grid_items_xs12
+        
+        seen_featured_links = set()  # Track seen links to avoid duplicates
+        
+        for item in all_grid_items:
+            link = item.find('a', href=True)
+            img = item.find('img')
+            
+            # Check if this looks like a featured section item
+            if link and img and '/connection-' in link.get('href', ''):
+                href = link.get('href', '')
+                
+                # Skip if we've already seen this link
+                if href in seen_featured_links:
+                    continue
+                
+                # Look for category text in divs (For Your Health, For Your Table, etc.)
+                category_div = item.find('div', string=lambda text: text and any(cat in text for cat in ['For Your', 'Inside Costco', 'Member Connection']))
+                
+                # Look for title in blue text
+                title_div = item.find('div', style=lambda style: style and 'color: #0f4878' in style)
+                
+                if category_div and title_div:
+                    title = title_div.get_text().strip()
+                    category = category_div.get_text().strip()
+                    
+                    if title and len(title) > 3:
+                        magazine_data['featured_sections'].append({
+                            'title': title,
+                            'link': href,
+                            'category': category,
+                            'image': self._fix_image_url(img.get('src', ''), "https://mobilecontent.costco.com"),
+                            'image_alt': img.get('alt', '')
+                        })
+                        seen_featured_links.add(href)
+        
+        # Extract all article categories dynamically with deduplication
+        all_article_links = content_area.find_all('a', href=lambda href: href and '/connection-' in href)
+        categories = {}
+        seen_links = set()  # Track seen links to avoid duplicates
+        
+        for link in all_article_links:
+            href = link.get('href', '')
+            category = self._extract_category_from_link(href)
+            title = link.get_text().strip()
+            
+            # Skip if we've already seen this link or title
+            if href in seen_links or not title or len(title) <= 3:
+                continue
+                
+            # Skip anchor links (fragments)
+            if href.endswith('#'):
+                continue
+                
+            # Skip duplicates with same title in different categories
+            title_seen = False
+            for existing_category in categories.values():
+                if any(article['title'] == title for article in existing_category):
+                    title_seen = True
+                    break
+            
+            if title_seen:
+                continue
+                
+            if category:
+                if category not in categories:
+                    categories[category] = []
+                
+                # Look for description or subtitle with enhanced extraction
+                description = ''
+                image_url = ''
+                image_alt = ''
+                
+                parent = link.find_parent(['div', 'li', 'section'])
+                if parent:
+                    # Check for description in spans with smaller font
+                    desc_elem = parent.find('span', style=lambda style: style and ('font-size: 0.8em' in style or 'font-size:0.8em' in style))
+                    if desc_elem:
+                        description = desc_elem.get_text().strip()
+                    
+                    # Check for description in divs with specific styling
+                    if not description:
+                        desc_elem = parent.find('div', style=lambda style: style and 'font-size: 1.2em' in style and 'padding-bottom' in style)
+                        if desc_elem:
+                            description = desc_elem.get_text().strip()
+                    
+                    # Check for description in navigation dropdown structure
+                    if not description:
+                        link_text = link.get_text().strip()
+                        if '\n' in link_text:
+                            lines = [line.strip() for line in link_text.split('\n') if line.strip()]
+                            if len(lines) >= 2:
+                                description = lines[1]
+                    
+                    # Look for associated image in the same parent container
+                    img_elem = parent.find('img')
+                    if img_elem:
+                        image_url = self._fix_image_url(img_elem.get('src', ''), "https://mobilecontent.costco.com")
+                        image_alt = img_elem.get('alt', '')
+                
+                # If no image found in parent, try to find it using article-specific patterns
+                if not image_url:
+                    image_url, image_alt = self._find_magazine_article_image(href, content_area)
+                
+                categories[category].append({
+                    'title': title,
+                    'link': href,
+                    'description': description,
+                    'image': image_url,
+                    'image_alt': image_alt
+                })
+                
+                seen_links.add(href)
+        
+        magazine_data['article_categories'] = categories
+        
+        # Extract PDF download link
+        pdf_link = content_area.find('a', string=lambda text: text and 'download' in text.lower() and 'pdf' in text.lower())
+        if pdf_link:
+            magazine_data['pdf_download_link'] = pdf_link.get('href', '')
+        
+        # Extract cover image
+        # Look for main cover image (usually the largest, most prominent image)
+        images = content_area.find_all('img')
+        best_cover_image = None
+        best_score = 0
+        
+        for img in images:
+            src = img.get('src', '')
+            alt = img.get('alt', '')
+            score = 0
+            
+            # Score based on likely cover image indicators
+            if 'cover' in src.lower() or 'cover' in alt.lower():
+                score += 100
+            if 'lp_' in src.lower():  # Landing page images
+                score += 50
+            # Generic cover image patterns (removed hardcoded "squishmallow")
+            if any(cover_indicator in src.lower() for cover_indicator in ['cover_story', 'main_image']):
+                score += 80
+            if any(size_indicator in src.lower() for size_indicator in ['large', 'main', 'hero']):
+                score += 30
+                
+            # Size-based scoring (prefer larger images)
+            width = img.get('width', '')
+            height = img.get('height', '')
+            if width and height:
+                try:
+                    w, h = int(width), int(height)
+                    if w > 400 and h > 300:
+                        score += 40
+                except ValueError:
+                    pass
+            
+            if score > best_score:
+                best_score = score
+                best_cover_image = img
+        
+        if best_cover_image:
+            magazine_data['cover_image'] = self._fix_image_url(best_cover_image.get('src', ''), "https://mobilecontent.costco.com")
+            magazine_data['cover_image_alt'] = best_cover_image.get('alt', '')
+        
+        return magazine_data
+    
+    def _find_magazine_article_image(self, article_href: str, content_area: Tag) -> Tuple[str, str]:
+        """
+        Find the associated image for a magazine article using URL-based patterns
+        Returns (image_url, image_alt) tuple
+        """
+        if not article_href:
+            return '', ''
+            
+        # Extract article identifiers from URL
+        article_mapping = {
+            # Special Section articles
+            'clean-sweep': ['iRobot', 'robot vacuum'],
+            'smokeless-simplicity': ['Gourmia', 'foodstation'],
+            'quality-coating': ['GreenPan', 'pots and pans'],
+            'buyers-picks': ['Buyers_Picks', 'pan set'],
+            
+            # For Your Health articles  
+            'keeping-your-cool': ['FYH_Keeping_Cool', 'wearable device'],
+            
+            # For Your Table articles
+            'lights-camera-eat': ['FYT_Yellowstone', 'a man'],
+            'picking-a-winner': ['FYT_PastaSauce', 'tomato sauce'], 
+            'growing-green': ['FYT_Wine', 'a woman in a vineyard'],
+            
+            # For Your Entertainment articles
+            'here-be-dragons': ['FYE_Author', 'author headshot'],
+            'power-play': ['FYE_Monopoly', 'book cover'],
+            
+            # Inside Costco articles
+            'sense-of-security': ['IC_Mem_Services', 'resort'],
+            'precious-resource': ['IC_Sustainability', 'resort'],
+            
+            # Member Connection articles
+            'ultimut-pet-provider': ['Mem_Conn_main', 'a man holding a puppy'],
+            
+            # Treasure Hunt articles
+            'treasure-hunt': ['Treasure_Hunt_Headphones', 'Costco Monopoly'],
+            
+            # Cover Story
+            'cover-soft-sell': ['Cover_Story', '2 girls holding squishmallows']
+        }
+        
+        # Find matching article pattern
+        article_key = None
+        for key in article_mapping.keys():
+            if key in article_href:
+                article_key = key
+                break
+        
+        if not article_key:
+            return '', ''
+            
+        image_pattern, expected_alt = article_mapping[article_key]
+        
+        # Find all images in content area
+        all_images = content_area.find_all('img')
+        
+        for img in all_images:
+            src = img.get('src', '')
+            alt = img.get('alt', '')
+            
+            # Check if this image matches the pattern
+            if image_pattern in src:
+                fixed_url = self._fix_image_url(src, "https://mobilecontent.costco.com")
+                return fixed_url, alt
+                
+        return '', ''
+    
+    def _extract_category_from_link(self, href: str) -> str:
+        """Extract category from article link"""
+        if not href:
+            return 'other'
+            
+        # Extract category from URL patterns
+        if '/connection-fye-' in href:
+            return 'For Your Entertainment'
+        elif '/connection-fyt-' in href:
+            return 'For Your Table'
+        elif '/connection-fyh-' in href:
+            return 'For Your Health'
+        elif '/connection-tech-' in href or '/connection-power-up' in href:
+            return 'Tech Connection'
+        elif '/connection-travel-' in href:
+            return 'Travel Connection'
+        elif '/connection-recipe-' in href:
+            return 'Recipes'
+        elif '/connection-member-' in href:
+            return 'Member Connection'
+        elif '/connection-publishers-' in href:
+            return "Publisher's Note"
+        elif '/connection-ss-' in href:
+            return 'Special Section'
+        elif '/connection-treasure-' in href:
+            return 'Treasure Hunt'
+        elif '/connection-costco-life' in href:
+            return 'Costco Life'
+        else:
+            return 'Inside Costco'
 
 
 # Main extraction function

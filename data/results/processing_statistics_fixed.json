@@ -6,9 +6,10 @@
     "tech": 1,
     "lifestyle": 4,
     "editorial": 1,
-    "shopping": 3,
+    "shopping": 2,
     "travel": 1,
-    "member": 3
+    "member": 3,
+    "magazine_front_cover": 1
   },
   "quality_distribution": {
     "excellent (90-100)": 16,
