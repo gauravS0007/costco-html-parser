@@ -166,7 +166,6 @@ class ShoppingContent(BaseContent):
     content_type: ContentType = ContentType.SHOPPING
     
     # Shopping specifics
-    featured_products: List[str] = field(default_factory=list)
     product_categories: List[str] = field(default_factory=list)
     seasonal_items: List[str] = field(default_factory=list)
     buying_tips: List[str] = field(default_factory=list)
@@ -175,7 +174,7 @@ class ShoppingContent(BaseContent):
     kirkland_signature: List[str] = field(default_factory=list)
     member_deals: List[str] = field(default_factory=list)
     warehouse_locations: List[str] = field(default_factory=list)
-
+    author: Dict[str, Union[str, Dict[str, str]]] = field(default_factory=dict)
 
 @dataclass
 class MemberContent(BaseContent):

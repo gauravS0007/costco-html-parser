@@ -1,6 +1,6 @@
 [
   {
-    "url": "https://www.costco.com/Recipe---Campari-Tomato-Thyme-Jam- --Costco.html",
+    "url": "https://www.costco.com/Recipe---Campari-Tomato-Thyme-Jam- --Costco.html",
     "content_type": "recipe",
     "meta_title": "",
     "meta_description": "",
@@ -48,7 +48,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751582293.2731142,
+      "extraction_timestamp": 1751793030.050165,
       "content_type": "recipe",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -67,7 +67,7 @@
     }
   },
   {
-    "url": "https://www.costco.com/Tech-Connection---Power-Up- --Costco.html",
+    "url": "https://www.costco.com/Tech-Connection---Power-Up- --Costco.html",
     "content_type": "tech",
     "meta_title": "",
     "meta_description": "",
@@ -81,14 +81,14 @@
       "image_caption": "",
       "content_type": "tech",
       "tags": [
-        "chargers",
-        "power delivery",
-        "Costco",
-        "Qi",
         "USB PD",
         "wireless charging",
         "fast charging",
-        "portable battery packs"
+        "chargers",
+        "Costco",
+        "power delivery",
+        "portable battery packs",
+        "Qi"
       ],
       "publish_date": "",
       "section_label": "TECH CONNECTION",
@@ -164,7 +164,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751582294.7331378,
+      "extraction_timestamp": 1751793031.437247,
       "content_type": "tech",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -268,7 +268,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751582296.261607,
+      "extraction_timestamp": 1751793032.830627,
       "content_type": "lifestyle",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -287,7 +287,7 @@
     }
   },
   {
-    "url": "https://www.costco.com/Publisher's-Note---Passion-is-key- --Costco.html",
+    "url": "https://www.costco.com/Publisher's-Note---Passion-is-key- --Costco.html",
     "content_type": "editorial",
     "meta_title": "",
     "meta_description": "",
@@ -411,7 +411,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751582297.654576,
+      "extraction_timestamp": 1751793034.221575,
       "content_type": "editorial",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -430,7 +430,7 @@
     }
   },
   {
-    "url": "https://www.costco.com/Treasure-Hunt- --Costco.html",
+    "url": "https://www.costco.com/Treasure-Hunt- --Costco.html",
     "content_type": "shopping",
     "meta_title": "",
     "meta_description": "",
@@ -439,39 +439,55 @@
       "headline": "Treasure Hunt",
       "byline": "By Costco Buying Team",
       "description": "Make your seating area inspired with this mid-century modern sofa upholstered in a soft, neutral gray fabric. Tufted back cushions provide stylish comfort, while the tapered legs feature a warm brown finish. Sofa extends for a lounge/sleeping option.  Item 1695434. Costco.com only.",
-      "featured_image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-september-23/09_23_Treasure_Hunt_03.jpg",
-      "image_alt": "faux fur throw",
+      "featured_image": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-september-23/09_23_Treasure_Hunt.jpg",
+      "image_alt": "sleeper sofa",
       "image_caption": "",
       "content_type": "shopping",
       "tags": [],
       "publish_date": "",
-      "featured_products": [
-        "Make your seating area inspired with this mid-century modern sofa upholstered in a soft, neutral gray fabric. Tufted back cushions provide stylish comfort, while the tapered legs feature a warm brown finish. Sofa extends for a lounge/sleeping option.  Item 1695434. Costco.com only.",
-        "GreenPan 3-Piece Non-Stick Skillet Set\nFeaturing Infinite8 Ceramic Non-Stick Interior, this set includes 8\", 10\" and 12\" frying pans finished with polished gold-tone handles.  Item 1713230. Warehouses/Costco.com.",
-        "Berkshire Faux Fur Throw\nThis throw delivers extra comfort and cozy warmth. Toss it on the bed or over the couch for easy use. Available in three styles: elevated stripe, textured plaid and stretch ruched. Selection may vary by location. Available late September.  Item 1727165. Warehouses/Costco.com.\n\n\n\n\n\nBerkshire Grace Faux Fur Heated Throw\nWarm up fast in this throw, which features auto shut-off at four hours, four heat settings and a built-in EZ Touch remote. Available late September.  Item 1727175.  Warehouses/Costco.com.",
-        "Berkshire Faux Fur Throw\nThis throw delivers extra comfort and cozy warmth. Toss it on the bed or over the couch for easy use. Available in three styles: elevated stripe, textured plaid and stretch ruched. Selection may vary by location. Available late September.  Item 1727165. Warehouses/Costco.com.",
-        "Berkshire Grace Faux Fur Heated Throw\nWarm up fast in this throw, which features auto shut-off at four hours, four heat settings and a built-in EZ Touch remote. Available late September.  Item 1727175.  Warehouses/Costco.com.",
-        "Hang Ten Ladies’ Utility Jacket\nThis jacket with a cozy fleece-lined collar features a herringbone canvas shell, two side pockets and two upper flat pockets that button. Available in green, black and copper. Sizes: XS–XXL. Selection may vary by location.  Item 1702255. Warehouses/Costco.com.\n\n\n\n\n\nKarma 5'3\" x 7' Area Rug\nThese stylish rugs are constructed with GRS (Global Recycling Standard) certified recycled polyester yarns. Available in multiple designs. Selection may vary by location. Available late September. Item 1731837. Warehouses only.",
-        "Hang Ten Ladies’ Utility Jacket\nThis jacket with a cozy fleece-lined collar features a herringbone canvas shell, two side pockets and two upper flat pockets that button. Available in green, black and copper. Sizes: XS–XXL. Selection may vary by location.  Item 1702255. Warehouses/Costco.com.",
-        "Karma 5'3\" x 7' Area Rug\nThese stylish rugs are constructed with GRS (Global Recycling Standard) certified recycled polyester yarns. Available in multiple designs. Selection may vary by location. Available late September. Item 1731837. Warehouses only."
-      ],
       "product_categories": [],
       "seasonal_items": [],
       "buying_tips": [],
       "kirkland_signature": [],
       "member_deals": [],
-      "warehouse_locations": []
+      "warehouse_locations": [],
+      "author": {
+        "name": "Lotions & Creams",
+        "title": "",
+        "bio": "",
+        "image": {
+          "url": "",
+          "alt": ""
+        }
+      }
     },
     "sections": [
       {
         "heading": "Inside Costco // Treasure Hunt",
-        "level": 1
+        "level": 1,
+        "content": [],
+        "images": [
+          {
+            "src": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-september-23/09_23_Treasure_Hunt.jpg",
+            "alt": "sleeper sofa",
+            "caption": "",
+            "relevance_score": 6
+          }
+        ]
       },
       {
         "heading": "Lillian August Ella Sleeper Sofa",
         "level": 3,
         "content": [
           "Make your seating area inspired with this mid-century modern sofa upholstered in a soft, neutral gray fabric. Tufted back cushions provide stylish comfort, while the tapered legs feature a warm brown finish. Sofa extends for a lounge/sleeping option.  Item 1695434. Costco.com only."
+        ],
+        "images": [
+          {
+            "src": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-september-23/09_23_Treasure_Hunt_01.jpg",
+            "alt": "pretzels",
+            "caption": "",
+            "relevance_score": 6
+          }
         ]
       },
       {
@@ -479,6 +495,14 @@
         "level": 3,
         "content": [
           "Homestyle Pretzels 35 oz. Bag Pretzel twists with a swirl of buttery, sweet and spicy tang in each bite.  Item 1751772. Warehouses/Costco.com."
+        ],
+        "images": [
+          {
+            "src": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-september-23/09_23_Treasure_Hunt_02.jpg",
+            "alt": "skillet set",
+            "caption": "",
+            "relevance_score": 6
+          }
         ]
       },
       {
@@ -486,6 +510,14 @@
         "level": 3,
         "content": [
           "Featuring Infinite8 Ceramic Non-Stick Interior, this set includes 8\", 10\" and 12\" frying pans finished with polished gold-tone handles.  Item 1713230. Warehouses/Costco.com."
+        ],
+        "images": [
+          {
+            "src": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-september-23/09_23_Treasure_Hunt_03.jpg",
+            "alt": "faux fur throw",
+            "caption": "",
+            "relevance_score": 6
+          }
         ]
       },
       {
@@ -493,6 +525,14 @@
         "level": 3,
         "content": [
           "This throw delivers extra comfort and cozy warmth. Toss it on the bed or over the couch for easy use. Available in three styles: elevated stripe, textured plaid and stretch ruched. Selection may vary by location. Available late September.  Item 1727165. Warehouses/Costco.com."
+        ],
+        "images": [
+          {
+            "src": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-september-23/09_23_Treasure_Hunt_04.jpg",
+            "alt": "Faux Fur Heated Throw",
+            "caption": "",
+            "relevance_score": 6
+          }
         ]
       },
       {
@@ -500,6 +540,14 @@
         "level": 3,
         "content": [
           "Warm up fast in this throw, which features auto shut-off at four hours, four heat settings and a built-in EZ Touch remote. Available late September.  Item 1727175.  Warehouses/Costco.com."
+        ],
+        "images": [
+          {
+            "src": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-september-23/09_23_Treasure_Hunt_05.jpg",
+            "alt": "a person riding a horse",
+            "caption": "",
+            "relevance_score": 6
+          }
         ]
       },
       {
@@ -507,6 +555,14 @@
         "level": 3,
         "content": [
           "Grand adventures await, including outdoor recreational activities ranging from swimming to hiking and mountain climbing to biking, and a world-famous live music scene. Vast cuisine options are to be savored, from iconic Tex-Mex dishes to authentic flavors from Old Mexico. Whether you want to explore the region’s rich history, experience its diverse cultural offerings or dine at nationally acclaimed restaurants, the Lone Star State rewards every kind of traveler. To learn more, visit CostcoTravel.com."
+        ],
+        "images": [
+          {
+            "src": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-september-23/09_23_Treasure_Hunt_06.jpg",
+            "alt": "beach",
+            "caption": "",
+            "relevance_score": 6
+          }
         ]
       },
       {
@@ -514,6 +570,14 @@
         "level": 3,
         "content": [
           "Bring some larger-than-life style into your space with this canvas print. Rendered on eco-friendly materials with fade-resistant archival inks, you can display this oversized art print anywhere in your home.  CostcoNext.com only."
+        ],
+        "images": [
+          {
+            "src": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-september-23/09_23_Treasure_Hunt_07.jpg",
+            "alt": "Hang Ten Ladies’ Utility Jacket",
+            "caption": "",
+            "relevance_score": 6
+          }
         ]
       },
       {
@@ -521,6 +585,14 @@
         "level": 3,
         "content": [
           "This jacket with a cozy fleece-lined collar features a herringbone canvas shell, two side pockets and two upper flat pockets that button. Available in green, black and copper. Sizes: XS–XXL. Selection may vary by location.  Item 1702255. Warehouses/Costco.com."
+        ],
+        "images": [
+          {
+            "src": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-september-23/09_23_Treasure_Hunt_08.jpg",
+            "alt": "area rug",
+            "caption": "",
+            "relevance_score": 6
+          }
         ]
       },
       {
@@ -528,13 +600,14 @@
         "level": 3,
         "content": [
           "These stylish rugs are constructed with GRS (Global Recycling Standard) certified recycled polyester yarns. Available in multiple designs. Selection may vary by location. Available late September. Item 1731837. Warehouses only."
-        ]
+        ],
+        "images": []
       }
     ],
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751582299.127933,
+      "extraction_timestamp": 1751793036.021131,
       "content_type": "shopping",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -553,7 +626,7 @@
     }
   },
   {
-    "url": "https://www.costco.com/Travel-Connection---Tale-of-two-cities- --Costco.html",
+    "url": "https://www.costco.com/Travel-Connection---Tale-of-two-cities- --Costco.html",
     "content_type": "travel",
     "meta_title": "",
     "meta_description": "",
@@ -578,29 +651,29 @@
         }
       },
       "destinations": [
-        "Texas",
+        "Austin area",
         "Austin",
-        "downtown Austin",
-        "downtown River",
-        "River",
         "two Texas cities",
         "Austin and San Antonio",
-        "Austin area"
+        "downtown River",
+        "River",
+        "Texas",
+        "downtown Austin"
       ],
       "attractions": [
-        "Harry Ransom",
+        "Presidential",
         "Lady Bird",
         "Congress Avenue",
-        "Presidential",
+        "Harry Ransom",
         "Travel Connection Congress Avenue"
       ],
       "restaurants": [
-        "Mex",
-        "Savor"
+        "Savor",
+        "Mex"
       ],
       "activities": [
-        "kayaking",
         "inner tube",
+        "kayaking",
         "ambling"
       ],
       "additional_images": [
@@ -667,7 +740,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751582300.6066968,
+      "extraction_timestamp": 1751793037.40348,
       "content_type": "travel",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -686,7 +759,7 @@
     }
   },
   {
-    "url": "https://www.costco.com/Member-Comments- --Costco.html",
+    "url": "https://www.costco.com/Member-Comments- --Costco.html",
     "content_type": "member",
     "meta_title": "",
     "meta_description": "",
@@ -780,7 +853,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751582301.991602,
+      "extraction_timestamp": 1751793038.953225,
       "content_type": "member",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -799,7 +872,7 @@
     }
   },
   {
-    "url": "https://www.costco.com/Recipe---Spinach-Lasagna-Roll-Ups- --Costco.html",
+    "url": "https://www.costco.com/Recipe---Spinach-Lasagna-Roll-Ups- --Costco.html",
     "content_type": "recipe",
     "meta_title": "",
     "meta_description": "",
@@ -847,7 +920,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751582303.369129,
+      "extraction_timestamp": 1751793040.3122098,
       "content_type": "recipe",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -866,7 +939,7 @@
     }
   },
   {
-    "url": "https://www.costco.com/October-Edition- --Costco.html",
+    "url": "https://www.costco.com/October-Edition- --Costco.html",
     "content_type": "shopping",
     "meta_title": "",
     "meta_description": "",
@@ -881,30 +954,38 @@
       "content_type": "shopping",
       "tags": [],
       "publish_date": "",
-      "featured_products": [
-        "Buyers’ picks\nProduct selections from Costco’s buying team"
-      ],
       "product_categories": [],
       "seasonal_items": [],
       "buying_tips": [],
       "kirkland_signature": [],
       "member_deals": [],
-      "warehouse_locations": []
+      "warehouse_locations": [],
+      "author": {
+        "name": "Lotions & Creams",
+        "title": "",
+        "bio": "",
+        "image": {
+          "url": "",
+          "alt": ""
+        }
+      }
     },
     "sections": [
       {
-        "heading": "★ SPECIAL SECTION  |  For Your Home",
-        "level": 2
-      },
-      {
-        "heading": "★FEATURED SECTIONS",
-        "level": 2
+        "heading": "Personalized Advertising",
+        "level": 4,
+        "content": [
+          "You can opt out of cookie-based tracking for personalized, targeted advertising through our advertising partners as described below, using this toggle.   Blocking these cookies may impact your experience and some features on the site.  Your choice is specific to the device, website, and browser you are using, and is deleted when you clear your browser’s cookies. Due to changes implemented by Apple in the Safari browser, your cookie settings are only saved until you close the browser. Safari users should check cookie settings each time they use Safari to access Costco.com or other Costco services.  You can opt-out of other sharing of your personal information for marketing purposes at Your Privacy Choices.",
+          "You can opt out of cookie-based tracking for personalized, targeted advertising through our advertising partners as described below, using this toggle.   Blocking these cookies may impact your experience and some features on the site.  Your choice is specific to the device, website, and browser you are using, and is deleted when you clear your browser’s cookies. Due to changes implemented by Apple in the Safari browser, your cookie settings are only saved until you close the browser. Safari users should check cookie settings each time they use Safari to access Costco.com or other Costco services.",
+          "You can opt-out of other sharing of your personal information for marketing purposes at Your Privacy Choices."
+        ],
+        "images": []
       }
     ],
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751582304.7612622,
+      "extraction_timestamp": 1751793042.0645041,
       "content_type": "shopping",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -923,7 +1004,7 @@
     }
   },
   {
-    "url": "https://www.costco.com/Recipe---Grape-Crumble- --Costco.html",
+    "url": "https://www.costco.com/Recipe---Grape-Crumble- --Costco.html",
     "content_type": "recipe",
     "meta_title": "",
     "meta_description": "",
@@ -985,7 +1066,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751582306.1366432,
+      "extraction_timestamp": 1751793043.4319391,
       "content_type": "recipe",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -1004,7 +1085,7 @@
     }
   },
   {
-    "url": "https://www.costco.com/FYE---Strong-women- --Costco.html",
+    "url": "https://www.costco.com/FYE---Strong-women- --Costco.html",
     "content_type": "lifestyle",
     "meta_title": "",
     "meta_description": "",
@@ -1115,7 +1196,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751582307.545899,
+      "extraction_timestamp": 1751793044.836989,
       "content_type": "lifestyle",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -1250,7 +1331,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751582308.95228,
+      "extraction_timestamp": 1751793046.234355,
       "content_type": "lifestyle",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -1269,7 +1350,7 @@
     }
   },
   {
-    "url": "https://www.costco.com/Member-Poll---What-do-you-look-forward-to-every-Autumn-- --Costco.html",
+    "url": "https://www.costco.com/Member-Poll---What-do-you-look-forward-to-every-Autumn-- --Costco.html",
     "content_type": "member",
     "meta_title": "",
     "meta_description": "",
@@ -1387,7 +1468,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751582310.95916,
+      "extraction_timestamp": 1751793048.058293,
       "content_type": "member",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -1493,7 +1574,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751582312.3653288,
+      "extraction_timestamp": 1751793049.4589472,
       "content_type": "lifestyle",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -1512,7 +1593,7 @@
     }
   },
   {
-    "url": "https://www.costco.com/Member-Connection---A-healing-voice- --Costco.html",
+    "url": "https://www.costco.com/Member-Connection---A-healing-voice- --Costco.html",
     "content_type": "member",
     "meta_title": "",
     "meta_description": "",
@@ -1595,7 +1676,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751582313.894602,
+      "extraction_timestamp": 1751793050.997781,
       "content_type": "member",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -1614,7 +1695,7 @@
     }
   },
   {
-    "url": "https://www.costco.com/Buying-Smart---Upgrade-your-space- --Costco.html",
+    "url": "https://www.costco.com/Buying-Smart---Upgrade-your-space- --Costco.html",
     "content_type": "shopping",
     "meta_title": "",
     "meta_description": "",
@@ -1629,24 +1710,37 @@
       "content_type": "shopping",
       "tags": [],
       "publish_date": "",
-      "featured_products": [
-        "Sustainability matters\nSustainability is a core value at Cosentino. The company has many green initiatives, but here are a few worth mentioning: One-third of its production includes reused and recycled materials, making it the only company in the industry with its own waste management and treatment plants; all products are manufactured with 100% certified renewable electric energy and its solar park produces the equivalent of the energy usage of 42,000 households. Cosentino also recycles 99% of the water used in production processes, achieving “zero level” water discharge in rivers and seas.—AT"
-      ],
       "product_categories": [],
       "seasonal_items": [],
       "buying_tips": [],
       "kirkland_signature": [],
       "member_deals": [],
-      "warehouse_locations": []
+      "warehouse_locations": [],
+      "author": {
+        "name": "Andrea Tomkins",
+        "title": "Consumer Reporter",
+        "bio": "Andrea Tomkins fills this month’s consumer reporter slot with this behind-the-scenes look at a Costco program. Email questions about this article to connection@costco.com .",
+        "image": {
+          "url": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/Andrea_Tomkins_Headshot.jpg",
+          "alt": "woman's head"
+        }
+      }
     },
     "sections": [
       {
         "heading": "Buying Smart",
-        "level": 1
-      },
-      {
-        "heading": "Upgrade your space",
-        "level": 1
+        "level": 1,
+        "content": [
+          "Silestone, Parisien Bleu countertop"
+        ],
+        "images": [
+          {
+            "src": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-september-23/09_23_IC_Buying_Smart.jpg",
+            "alt": "Xxxx",
+            "caption": "",
+            "relevance_score": 6
+          }
+        ]
       },
       {
         "heading": "Transform your kitchen (or bathroom) with Costco’s Countertop Installation program",
@@ -1654,8 +1748,10 @@
         "content": [
           "The kitchen is often called the heart of the home due to its central role in our daily lives. Food is prepared, shared and consumed here, but it’s also a place for everyday living. Kitchens are versatile, multipurpose spaces that also serve as workstations for chores, crafting, schoolwork and working from home.",
           "The team behind Costco’s Countertop Installation program keenly understands that if the kitchen counter is where you are rolling out the cookie dough and helping the kids with their homework, that counter needs to be a durable, high-quality product that enhances your home’s aesthetics, functionality and value.",
-          "Cosentino, the company behind Costco’s program, has been operating in North America for more than 25 years and has a presence around the globe. It focuses on natural stone, quartz and Dekton, an innovative material designed to minimize or eliminate carbon emissions throughout its life cycle (see “More about Dekton”)."
-        ]
+          "Cosentino, the company behind Costco’s program, has been operating in North America for more than 25 years and has a presence around the globe. It focuses on natural stone, quartz and Dekton, an innovative material designed to minimize or eliminate carbon emissions throughout its life cycle (see “More about Dekton”).",
+          "Through Costco’s Countertop Installation program, the process for members who want to upgrade their countertops is remarkably easy and convenient. “All of the big decisions are made in one appointment in the comfort of your own home,” says Kelly Martin, Cosentino’s national account director. “It’s truly white-glove service.”"
+        ],
+        "images": []
       },
       {
         "heading": "Getting started",
@@ -1663,8 +1759,10 @@
         "content": [
           "The first step is to go to Costco.com, click “Shop” and in the drop-down menu under “Home & Installation Services,” click  “Countertop Installation.” Fill out the form on that page to request a complimentary, in-home consultation. Alternatively, you can initiate the process by calling 1-877-433-1377.",
           "You will either speak to, or be contacted by, your local Cosentino dealer, who will get the ball rolling with some easy questions about your wishes and requirements. You and the dealer will set up an appointment with a design specialist, who will come to your home and work with you to select the best options for you and your space.",
-          "“You basically have a designer on your team,” says Martin. “They are well-versed in what materials are best for your purpose, not just the latest trends, and do a great job to make sure the member is happy in the long run.”"
-        ]
+          "“You basically have a designer on your team,” says Martin. “They are well-versed in what materials are best for your purpose, not just the latest trends, and do a great job to make sure the member is happy in the long run.”",
+          "During your appointment, the design specialist will take detailed measurements, review samples with you, finalize the design with you and confirm the project costs."
+        ],
+        "images": []
       },
       {
         "heading": "Installation, done right",
@@ -1672,8 +1770,10 @@
         "content": [
           "As with any home remodel project, having new countertops installed correctly is the key to success and longevity. Cosentino dealers complete the project according to the design plan you and the specialist came up with, and anyone who enters your home through the program will be a trusted professional.",
           "“We put a lot of blood, sweat and tears into building this network of dealers that we trust,” says Martin. “They’re long-standing partners of Cosentino’s and they’re vetted through a formal background check process. Given Costco’s high standard of service, dealers are required to hold all licenses required to operate and install by federal, state and local regulations.”",
-          "You can get transferable warranties on all Cosentino products. There is a 15-year warranty available for Cosentino’s natural stone counters, and a 25-year warranty for the company’s Silestone (quartz) and Dekton countertops. If you decide to sell your home, a transferable warranty on a new kitchen countertop might just be the thing that seals the deal with potential buyers."
-        ]
+          "You can get transferable warranties on all Cosentino products. There is a 15-year warranty available for Cosentino’s natural stone counters, and a 25-year warranty for the company’s Silestone (quartz) and Dekton countertops. If you decide to sell your home, a transferable warranty on a new kitchen countertop might just be the thing that seals the deal with potential buyers.",
+          "When the job is completed, not only is there a gorgeous counter to enjoy for years to come, you’ll also receive a Costco Shop Card for 10% of its cost."
+        ],
+        "images": []
       },
       {
         "heading": "A cut above",
@@ -1681,27 +1781,57 @@
         "content": [
           "“Costco does the heavy lifting for our members to make sure they’re getting the best quality and the best value,” says Eric Strasik, assistant buyer in Costco’s Home & Installation department. He says that instead of members spending time and energy getting quotes from multiple contractors and hoping to find someone they trust, Costco carefully selected Cosentino to work with because of their commitment to providing quality countertops and expert installation.",
           "Martin summarizes the benefits of Costco’s Countertop Installation program: “It’s the expertise, the experience and the support that you get. You just don’t find that anywhere else.”"
-        ]
+        ],
+        "images": []
       },
       {
         "heading": "Sustainability matters",
         "level": 3,
         "content": [
           "Sustainability is a core value at Cosentino. The company has many green initiatives, but here are a few worth mentioning: One-third of its production includes reused and recycled materials, making it the only company in the industry with its own waste management and treatment plants; all products are manufactured with 100% certified renewable electric energy and its solar park produces the equivalent of the energy usage of 42,000 households. Cosentino also recycles 99% of the water used in production processes, achieving “zero level” water discharge in rivers and seas.—AT"
+        ],
+        "images": [
+          {
+            "src": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-september-23/09_23_IC_Buying_Smart_Sidebar.jpg",
+            "alt": "rock",
+            "caption": "",
+            "relevance_score": 6
+          }
         ]
       },
       {
         "heading": "More about Dekton",
         "level": 3,
         "content": [
-          "Dekton is a high-performance material composed of a unique blend of quartz, porcelain and glass particles. It is renowned for its exceptional durability and resistance to scratches, stains, heat and UV radiation. It’s also nonporous, which means low maintenance and easy cleaning. What’s more, it is resin-free, so no need for sealers. Dekton is available in a range of colors and finishes, making it a versatile and attractive choice for kitchen or bathroom countertops that combine both aesthetic appeal and practical functionality.—AT"
+          "Dekton is a high-performance material composed of a unique blend of quartz, porcelain and glass particles. It is renowned for its exceptional durability and resistance to scratches, stains, heat and UV radiation. It’s also nonporous, which means low maintenance and easy cleaning. What’s more, it is resin-free, so no need for sealers. Dekton is available in a range of colors and finishes, making it a versatile and attractive choice for kitchen or bathroom countertops that combine both aesthetic appeal and practical functionality.—AT",
+          "Andrea Tomkins fills this month’s consumer reporter slot with this behind-the-scenes look at a Costco program. Email questions about this article to connection@costco.com ."
+        ],
+        "images": [
+          {
+            "src": "https://mobilecontent.costco.com/live/resource/img/static-us-connection-october-23/Andrea_Tomkins_Headshot.jpg",
+            "alt": "woman's head",
+            "caption": "",
+            "relevance_score": 6
+          },
+          {
+            "src": "https://mobilecontent.costco.com/Buying Smart - Upgrade your space  _ Costco_files/016_StauntonCapitol_300x250_jl.jpg",
+            "alt": "Kirkland signature logo. Men's merino wool blend socks. Click here.",
+            "caption": "",
+            "relevance_score": 6
+          },
+          {
+            "src": "https://mobilecontent.costco.com/Buying Smart - Upgrade your space  _ Costco_files/023_WellnessPetCo_300x250_jl.jpg",
+            "alt": "Your kitty deserves wellness good kitty™. $8 off. 8/30/23-9/24/23 | Limit 5. Click here",
+            "caption": "",
+            "relevance_score": 6
+          }
         ]
       }
     ],
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751582315.273448,
+      "extraction_timestamp": 1751793052.729131,
       "content_type": "shopping",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -1720,4 +1850,3 @@
     }
   }
 ]
-

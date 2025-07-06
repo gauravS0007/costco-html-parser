@@ -2018,30 +2018,158 @@ class FixedSuperEnhancedCostcoProcessor:
         )
 
     def _build_shopping_schema_fixed(self, extracted: ExtractedContent, base_data: dict) -> ShoppingContent:
-        """FIXED: Shopping content extraction"""
+        """FIXED: Shopping content extraction with enhanced featured image and author"""
         
-        featured_products = []
-        kirkland_signature = []
+        # SHOPPING-SPECIFIC: Enhanced featured image selection
+        shopping_featured_image = self._find_shopping_featured_image(extracted, base_data.get('title', ''))
+        if shopping_featured_image:
+            base_data['featured_image'] = shopping_featured_image.get('src', '')
+            base_data['image_alt'] = shopping_featured_image.get('alt', '')
+            base_data['image_caption'] = shopping_featured_image.get('caption', '')
         
-        # Extract product information
-        for content in extracted.main_content:
-            if 'kirkland signature' in content.lower():
-                kirkland_signature.append(content)
-            elif any(product_word in content.lower() for product_word in 
-                    ['product', 'item', 'brand', 'sofa', 'cookware']):
-                featured_products.append(content)
+        # SHOPPING-SPECIFIC: Enhanced author extraction
+        author_object = self._extract_shopping_author(extracted)
         
-        # Extract from headings (often product names)
-        for heading in extracted.headings:
-            if any(product_indicator in heading['text'].lower() for product_indicator in 
-                  ['sofa', 'skillet', 'throw', 'seasoned']):
-                featured_products.append(heading['text'])
-        
+        # Empty to avoid duplication with sections - sections contain all content
         return ShoppingContent(
             **base_data,
-            featured_products=featured_products[:8],
-            kirkland_signature=kirkland_signature[:3]
+            author=author_object,
+            product_categories=[],  # Empty to avoid duplication with sections
+            seasonal_items=[],  # Empty to avoid duplication with sections
+            buying_tips=[],  # Empty to avoid duplication with sections
+            kirkland_signature=[],  # Empty to avoid duplication with sections
+            member_deals=[],  # Empty to avoid duplication with sections
+            warehouse_locations=[]  # Empty to avoid duplication with sections
         )
+
+    def _find_shopping_featured_image(self, extracted: ExtractedContent, title: str) -> dict:
+        """SHOPPING-SPECIFIC: Enhanced featured image selection for shopping content"""
+        import re
+        
+        best_image = None
+        best_score = 0
+        
+        title_lower = title.lower()
+        
+        for img in extracted.images:
+            score = 0
+            img_src = img.get('src', '').lower()
+            img_alt = img.get('alt', '').lower()
+            
+            # DYNAMIC: Skip obviously wrong images (ads, icons, etc.)
+            skip_patterns = ['icon', 'logo', 'tab_icon', 'ad_', 'banner', 'wellness', 'petco', 'capitol']
+            if any(skip in img_src.lower() for skip in skip_patterns):
+                continue
+            
+            # SIMPLE: Check exact headline match in image URL
+            # Convert title to URL format (spaces to underscores, etc.)
+            title_slug = title_lower.replace(' ', '_').replace('-', '_')
+            img_src_lower = img_src.lower()
+            
+            # Priority 1: Exact headline match without numbers (e.g., "treasure_hunt.jpg")
+            if title_slug in img_src_lower and not any(num in img_src_lower for num in ['_01', '_02', '_03', '_04', '_05', '_06', '_07', '_08']):
+                score += 100
+            # Priority 2: Exact headline match with _01 (e.g., "treasure_hunt_01.jpg") 
+            elif title_slug + '_01' in img_src_lower:
+                score += 90
+            # Priority 3: Exact headline match with _02
+            elif title_slug + '_02' in img_src_lower:
+                score += 80
+            # Priority 4: Any other exact headline match with numbers
+            elif title_slug in img_src_lower:
+                score += 50
+            
+            # Score by image quality/size
+            if img.get('score', 0) > 0:
+                score += img.get('score', 0)
+            
+            if score > best_score:
+                best_score = score
+                best_image = img
+        
+        return best_image if best_image else {}
+
+    def _extract_shopping_author(self, extracted: ExtractedContent) -> dict:
+        """SHOPPING-SPECIFIC: Enhanced author extraction for shopping content"""
+        author_info = {
+            'name': '',
+            'title': '',
+            'bio': '',
+            'image': {'url': '', 'alt': ''}
+        }
+        
+        # Extract author name from byline - FIXED to get actual author name
+        if extracted.byline:
+            import re
+            # Clean up byline to get just the name
+            byline_clean = extracted.byline.replace('By ', '').replace('by ', '').strip()
+            
+            # FIXED: Don't use "Lotions & Creams" - find actual author name
+            # Look for proper author name patterns in byline and content
+            author_patterns = [
+                r'by\s+([A-Z][a-z]+\s+[A-Z][a-z]+)',  # "by FirstName LastName"
+                r'([A-Z][a-z]+\s+[A-Z][a-z]+)\s+fills',  # "FirstName LastName fills"
+            ]
+            
+            # Check byline first
+            for pattern in author_patterns:
+                match = re.search(pattern, extracted.byline, re.IGNORECASE)
+                if match and len(match.group(1)) > 5:  # Reasonable name length
+                    author_info['name'] = match.group(1).strip()
+                    break
+            
+            # If no good match in byline, check main content for author references
+            if not author_info['name'] or author_info['name'] == byline_clean:
+                for content in extracted.main_content:
+                    for pattern in author_patterns:
+                        match = re.search(pattern, content, re.IGNORECASE)
+                        if match and len(match.group(1)) > 5:
+                            author_info['name'] = match.group(1).strip()
+                            break
+                    if author_info['name']:
+                        break
+            
+            # Fallback to byline if still no good name found
+            if not author_info['name']:
+                author_info['name'] = byline_clean
+        
+        # Look for author details in content
+        for content in extracted.main_content:
+            # Look for author bio patterns
+            if author_info['name'] and author_info['name'].lower() in content.lower():
+                # This paragraph might contain author info
+                if 'fills this month' in content.lower() or 'consumer reporter' in content.lower():
+                    author_info['bio'] = content
+                    # Extract title if present
+                    if 'consumer reporter' in content.lower():
+                        author_info['title'] = 'Consumer Reporter'
+                    break
+        
+        # Find author image
+        author_name_lower = author_info['name'].lower()
+        for img in extracted.images:
+            img_alt = img.get('alt', '').lower()
+            img_src = img.get('src', '').lower()
+            
+            # Look for author headshot patterns
+            if ('headshot' in img_src and author_name_lower.replace(' ', '_') in img_src) or \
+               ('woman\'s head' in img_alt and 'andrea' in author_name_lower) or \
+               ('man\'s head' in img_alt and author_name_lower not in ['andrea']):
+                # Gender-aware matching - avoid "man's head" matching "woman's head"
+                if 'woman' in img_alt and any(female_name in author_name_lower for female_name in ['andrea', 'sandy', 'kelly']):
+                    author_info['image'] = {
+                        'url': img.get('src', ''),
+                        'alt': img.get('alt', '')
+                    }
+                    break
+                elif 'man' in img_alt and not any(female_name in author_name_lower for female_name in ['andrea', 'sandy', 'kelly']):
+                    author_info['image'] = {
+                        'url': img.get('src', ''),
+                        'alt': img.get('alt', '')
+                    }
+                    break
+        
+        return author_info if author_info['name'] else {}
 
     def _build_member_schema_fixed(self, extracted: ExtractedContent, base_data: dict) -> MemberContent:
         """FIXED: Sub-type specific member content extraction"""
@@ -2953,47 +3081,68 @@ Instructions: {len(current_instructions)} found
             logger.error(f"Error in conservative merging: {e}")
             return content_schema
 
+    def _build_shopping_sections_comment_guided(self, extracted: ExtractedContent) -> List[Dict]:
+        """SHOPPING ONLY: Comment-guided section extraction to eliminate duplication"""
+        if not hasattr(self, '_current_html_content'):
+            return []
+        
+        try:
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(self._current_html_content, 'html.parser')
+            main_content_area = self.universal_extractor._find_main_content(soup)
+            if main_content_area:
+                sections = self.universal_extractor.extract_sections_between_headings(main_content_area, "shopping")
+                logger.info(f"✅ SHOPPING: Extracted {len(sections)} sections without duplication")
+                return sections
+        except Exception as e:
+            logger.error(f"Shopping section extraction failed: {e}")
+        
+        return []
+
     def _build_enhanced_structure_fixed(self, url: str, content_schema, 
                                        extracted: ExtractedContent) -> EnhancedPageStructure:
         """FIXED: Build comprehensive page structure"""
         
-        # Build sections from headings with content
-        # SKIP sections for recipes to avoid duplicate content with instructions
-        sections = []
-        if content_schema.content_type != ContentType.RECIPE:
-            for heading in extracted.headings[:15]:
-                section = {
-                    'heading': heading['text'],
-                    'level': heading['level']
-                }
-                # Add content if available
-                if 'content' in heading and heading['content']:
-                    section['content'] = heading['content']
-                
-                # LIFESTYLE ONLY: Add images with captions and credits
-                if content_schema.content_type == ContentType.LIFESTYLE and 'images' in heading and heading['images']:
-                    section['images'] = []
-                    for img_data in heading['images']:
-                        # Fix image URLs for lifestyle content
-                        img_src = img_data.get('src', '')
-                        if img_src and not img_src.startswith('http'):
-                            base_url = "https://mobilecontent.costco.com"
-                            if img_src.startswith('/live/resource/img/'):
-                                img_src = f"{base_url}{img_src}"
-                            elif not img_src.startswith('http'):
-                                img_src = f"{base_url}/live/resource/img/static-us-connection-october-23/{img_src.split('/')[-1]}"
-                        
-                        section['images'].append({
-                            'src': img_src,
-                            'alt': img_data.get('alt', ''),
-                            'caption': img_data.get('caption', ''),
-                            'credit': img_data.get('credit', ''),
-                            'width': img_data.get('width', ''),
-                            'height': img_data.get('height', ''),
-                            'class': img_data.get('class', '')
-                        })
-                
-                sections.append(section)
+        # SHOPPING ONLY: Use comment-guided section extraction
+        if content_schema.content_type == ContentType.SHOPPING:
+            sections = self._build_shopping_sections_comment_guided(extracted)
+        else:
+            # ORIGINAL LOGIC: Build sections from headings with content (unchanged for other categories)
+            sections = []
+            if content_schema.content_type != ContentType.RECIPE:
+                for heading in extracted.headings[:15]:
+                    section = {
+                        'heading': heading['text'],
+                        'level': heading['level']
+                    }
+                    # Add content if available
+                    if 'content' in heading and heading['content']:
+                        section['content'] = heading['content']
+                    
+                    # LIFESTYLE ONLY: Add images with captions and credits
+                    if content_schema.content_type == ContentType.LIFESTYLE and 'images' in heading and heading['images']:
+                        section['images'] = []
+                        for img_data in heading['images']:
+                            # Fix image URLs for lifestyle content
+                            img_src = img_data.get('src', '')
+                            if img_src and not img_src.startswith('http'):
+                                base_url = "https://mobilecontent.costco.com"
+                                if img_src.startswith('/live/resource/img/'):
+                                    img_src = f"{base_url}{img_src}"
+                                elif not img_src.startswith('http'):
+                                    img_src = f"{base_url}/live/resource/img/static-us-connection-october-23/{img_src.split('/')[-1]}"
+                            
+                            section['images'].append({
+                                'src': img_src,
+                                'alt': img_data.get('alt', ''),
+                                'caption': img_data.get('caption', ''),
+                                'credit': img_data.get('credit', ''),
+                                'width': img_data.get('width', ''),
+                                'height': img_data.get('height', ''),
+                                'class': img_data.get('class', '')
+                            })
+                    
+                    sections.append(section)
 
         # Calculate comprehensive quality score
         quality_score = self._calculate_quality_score_fixed(content_schema, extracted)

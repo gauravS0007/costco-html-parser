@@ -3961,6 +3961,114 @@ class FixedUniversalContentExtractor:
         print(f"\nRecipe section headers found: {recipe_headers}")
         print("=== END DEBUG ===")
 
+    def extract_sections_between_headings(self, content_area: Tag, content_type: str = "shopping") -> List[Dict]:
+        """
+        IMPROVED: Extract sections using HTML comments as guides
+        This follows the comment structure to eliminate duplication and find correct images
+        SHOPPING ONLY: This method should only be used for shopping content
+        """
+        if not content_area:
+            return []
+        
+        # SAFETY: Only for shopping content to avoid impacting other categories
+        if content_type.lower() != "shopping":
+            logger.warning(f"extract_sections_between_headings called for non-shopping content: {content_type}")
+            return []
+        
+        sections = []
+        
+        # Find all headings in document order
+        all_headings = content_area.find_all(["h1", "h2", "h3", "h4", "h5", "h6"])
+        
+        if not all_headings:
+            return []
+        
+        # Use HTML comments to understand section structure
+        html_content = str(content_area)
+        
+        # For each heading, extract content based on comment boundaries
+        for i, heading in enumerate(all_headings):
+            heading_text = heading.get_text().strip()
+            if not heading_text or len(heading_text) < 2:
+                continue
+            
+            # Filter out cookies/navigation headings
+            if any(nav_term in heading_text.lower() for nav_term in ['cookie', 'privacy', 'advertising and products']):
+                continue
+                
+            level = int(heading.name[1])
+            section_content = []
+            section_images = []
+            
+            # Find next heading to know where content section ends
+            next_heading = all_headings[i + 1] if i + 1 < len(all_headings) else None
+            
+            # Look for comment patterns around this heading
+            heading_html = str(heading)
+            heading_start = html_content.find(heading_html)
+            
+            if heading_start != -1:
+                # Find the content section for this heading
+                section_end = len(html_content)
+                if next_heading:
+                    next_heading_html = str(next_heading)
+                    next_start = html_content.find(next_heading_html, heading_start + len(heading_html))
+                    if next_start != -1:
+                        section_end = next_start
+                
+                # Extract content in this section
+                section_html = html_content[heading_start:section_end]
+                
+                # Parse this section to find paragraphs and images
+                from bs4 import BeautifulSoup
+                section_soup = BeautifulSoup(section_html, 'html.parser')
+                
+                # Find paragraphs in this section only
+                for p in section_soup.find_all('p'):
+                    text = p.get_text().strip()
+                    if text and len(text) > 15:
+                        # Skip bylines and navigation
+                        if text.lower().startswith('by ') and len(text) < 50:
+                            continue
+                        nav_terms = ['home', 'costco connection', 'download the pdf', 'copyright', '©']
+                        nav_score = sum(1 for term in nav_terms if term in text.lower())
+                        if not (len(text) < 100 and nav_score > 0):
+                            section_content.append(text)
+                
+                # Find images in this section
+                for img in section_soup.find_all('img'):
+                    src = img.get('src', '')
+                    alt = img.get('alt', '')
+                    if src:
+                        # Fix URL using the same logic as the main extractor
+                        fixed_src = self._fix_image_url(src, "https://mobilecontent.costco.com")
+                        if fixed_src:
+                            section_images.append({
+                                'src': fixed_src,
+                                'alt': alt,
+                                'caption': '',
+                                'relevance_score': 6  # Base score
+                            })
+                
+                # Special handling for comment-guided sections
+                if '<!-- Sidebar with Image -->' in section_html:
+                    # This section has an associated image
+                    logger.info(f"📷 Found sidebar with image for: {heading_text}")
+                elif '<!-- Sidebar without Image -->' in section_html:
+                    # This section explicitly has no image
+                    logger.info(f"📝 Found sidebar without image for: {heading_text}")
+            
+            # Create section if we have content
+            if section_content or section_images:
+                sections.append({
+                    "heading": heading_text,
+                    "level": level,
+                    "content": section_content,
+                    "images": section_images
+                })
+        
+        return sections
+
 
 # Main extraction function
 def extract_content_from_html_fixed(html_content: str, url: str) -> ExtractedContent:
