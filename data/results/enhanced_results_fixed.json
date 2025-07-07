@@ -48,7 +48,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751807702.681279,
+      "extraction_timestamp": 1751866781.134619,
       "content_type": "recipe",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -81,14 +81,14 @@
       "image_caption": "",
       "content_type": "tech",
       "tags": [
-        "Qi",
-        "USB PD",
         "fast charging",
+        "Qi",
+        "portable battery packs",
         "chargers",
-        "Costco",
-        "power delivery",
         "wireless charging",
-        "portable battery packs"
+        "Costco",
+        "USB PD",
+        "power delivery"
       ],
       "publish_date": "",
       "section_label": "TECH CONNECTION",
@@ -164,7 +164,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751807704.096673,
+      "extraction_timestamp": 1751866782.701726,
       "content_type": "tech",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -268,7 +268,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751807705.6004028,
+      "extraction_timestamp": 1751866784.290517,
       "content_type": "lifestyle",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -411,7 +411,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751807707.1874418,
+      "extraction_timestamp": 1751866785.8737862,
       "content_type": "editorial",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -594,7 +594,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751807708.860281,
+      "extraction_timestamp": 1751866787.796578,
       "content_type": "shopping",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -638,30 +638,30 @@
         }
       },
       "destinations": [
-        "two Texas cities",
-        "Texas",
-        "River",
-        "downtown Austin",
-        "downtown River",
         "Austin area",
+        "downtown River",
+        "Texas",
+        "downtown Austin",
         "Austin",
-        "Austin and San Antonio"
+        "Austin and San Antonio",
+        "River",
+        "two Texas cities"
       ],
       "attractions": [
         "Harry Ransom",
-        "Presidential",
-        "Travel Connection Congress Avenue",
         "Congress Avenue",
+        "Travel Connection Congress Avenue",
+        "Presidential",
         "Lady Bird"
       ],
       "restaurants": [
-        "Mex",
-        "Savor"
+        "Savor",
+        "Mex"
       ],
       "activities": [
-        "kayaking",
+        "inner tube",
         "ambling",
-        "inner tube"
+        "kayaking"
       ],
       "additional_images": [
         {
@@ -727,7 +727,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751807710.298516,
+      "extraction_timestamp": 1751866789.372958,
       "content_type": "travel",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -840,7 +840,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751807711.686508,
+      "extraction_timestamp": 1751866790.935261,
       "content_type": "member",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -907,7 +907,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751807713.060825,
+      "extraction_timestamp": 1751866792.532964,
       "content_type": "recipe",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -1279,7 +1279,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751807714.673735,
+      "extraction_timestamp": 1751866794.4149828,
       "content_type": "magazine_front_cover",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -1360,7 +1360,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751807716.051029,
+      "extraction_timestamp": 1751866795.983474,
       "content_type": "recipe",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -1490,7 +1490,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751807717.521182,
+      "extraction_timestamp": 1751866797.59508,
       "content_type": "lifestyle",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -1625,7 +1625,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751807719.0009868,
+      "extraction_timestamp": 1751866799.2911758,
       "content_type": "lifestyle",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -1762,7 +1762,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751807720.881618,
+      "extraction_timestamp": 1751866801.370605,
       "content_type": "member",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -1868,7 +1868,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751807722.305116,
+      "extraction_timestamp": 1751866802.972904,
       "content_type": "lifestyle",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -1970,7 +1970,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751807723.8999622,
+      "extraction_timestamp": 1751866804.81603,
       "content_type": "member",
       "universal_extraction": true,
       "ai_enhanced": true,
@@ -2122,7 +2122,7 @@
     "related_articles": [],
     "quality_score": 100,
     "extraction_metadata": {
-      "extraction_timestamp": 1751807725.465927,
+      "extraction_timestamp": 1751866806.651458,
       "content_type": "shopping",
       "universal_extraction": true,
       "ai_enhanced": true,

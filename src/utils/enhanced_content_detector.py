@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 
 from ..models.content_schemas import (
     ContentType, BaseContent, RecipeContent, TravelContent, TechContent,
-    LifestyleContent, EditorialContent, ShoppingContent, MemberContent
+    LifestyleContent, EditorialContent, ShoppingContent, MemberContent, UnknownContent
 )
 
 logger = logging.getLogger(__name__)
@@ -178,7 +178,7 @@ class EnhancedContentDetector:
         elif content_type == ContentType.MEMBER:
             return self._extract_member_content(article_content or soup, base_data)
         else:
-            return BaseContent(**base_data, content_type=content_type)
+            return self._extract_unknown_content(article_content or soup, base_data)
 
     def _find_article_content(self, soup: BeautifulSoup):
         """Find the actual article content, avoiding cookie popups and navigation."""
@@ -804,3 +804,75 @@ class EnhancedContentDetector:
         if match:
             return match.group(1)
         return ""
+
+    def _extract_unknown_content(self, soup: BeautifulSoup, base_data: Dict) -> UnknownContent:
+        """Extract unknown content with analysis for future categorization."""
+        text = soup.get_text()
+        
+        # Analyze content structure
+        content_structure = {
+            'headings': len(soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])),
+            'paragraphs': len(soup.find_all('p')),
+            'lists': len(soup.find_all(['ul', 'ol'])),
+            'images': len(soup.find_all('img')),
+            'links': len(soup.find_all('a')),
+            'tables': len(soup.find_all('table'))
+        }
+        
+        # Extract potential patterns for analysis
+        detected_patterns = []
+        
+        # Check for common patterns
+        if re.search(r'\d+\s+(cup|tablespoon|teaspoon|ounce)', text, re.IGNORECASE):
+            detected_patterns.append('measurement_units')
+        if re.search(r'(recipe|ingredients|directions)', text, re.IGNORECASE):
+            detected_patterns.append('recipe_keywords')
+        if re.search(r'(travel|destination|visit|explore)', text, re.IGNORECASE):
+            detected_patterns.append('travel_keywords')
+        if re.search(r'(technology|tech|device|features)', text, re.IGNORECASE):
+            detected_patterns.append('tech_keywords')
+        if re.search(r'(lifestyle|family|wellness|health)', text, re.IGNORECASE):
+            detected_patterns.append('lifestyle_keywords')
+        if re.search(r'(member|poll|survey|comments)', text, re.IGNORECASE):
+            detected_patterns.append('member_keywords')
+        if re.search(r'(product|buying|shopping|deals)', text, re.IGNORECASE):
+            detected_patterns.append('shopping_keywords')
+        if re.search(r'(editorial|publisher|opinion|note)', text, re.IGNORECASE):
+            detected_patterns.append('editorial_keywords')
+        
+        # Extract potential entities (simplified)
+        extracted_entities = []
+        # Find capitalized words (potential names/places)
+        entities = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', text)
+        extracted_entities = list(set(entities))[:20]  # Limit to 20 unique entities
+        
+        # Calculate confidence scores for existing categories
+        confidence_scores = {}
+        for content_type, patterns in self.content_patterns.items():
+            score = 0
+            for keyword in patterns.get('keywords', []):
+                if keyword.lower() in text.lower():
+                    score += 1
+            confidence_scores[content_type.value] = score / len(patterns.get('keywords', [1]))
+        
+        # Processing notes
+        processing_notes = [
+            f"Content length: {len(text)} characters",
+            f"Detected patterns: {', '.join(detected_patterns) if detected_patterns else 'None'}",
+            f"Highest confidence: {max(confidence_scores.items(), key=lambda x: x[1])[0] if confidence_scores else 'None'}"
+        ]
+        
+        logger.warning(f"Unknown content detected - patterns: {detected_patterns}, entities: {len(extracted_entities)}")
+        
+        return UnknownContent(
+            **base_data,
+            raw_content=text[:1000],  # First 1000 chars for review
+            detected_patterns=detected_patterns,
+            content_analysis={'word_count': len(text.split()), 'char_count': len(text)},
+            potential_categories=sorted(confidence_scores.keys(), key=lambda x: confidence_scores[x], reverse=True)[:3],
+            confidence_scores=confidence_scores,
+            content_structure=content_structure,
+            extracted_entities=extracted_entities,
+            processing_notes=processing_notes,
+            requires_manual_review=True
+        )

@@ -29,7 +29,7 @@ class ExtractedContent:
     quotes: List[str] = None
     lists: List[Dict[str, List[str]]] = None
     metadata: Dict[str, str] = None
-    content_type: str = "general"
+    content_type: str = "unknown"
 
     def __post_init__(self):
         if self.main_content is None:
@@ -316,7 +316,7 @@ class FixedUniversalContentExtractor:
                 logger.info(f"🎯 Content type: {best_type} (score: {best_score})")
                 return best_type
 
-        return "general"
+        return "unknown"
 
     def _extract_title_and_metadata(
         self, soup: BeautifulSoup, extracted: ExtractedContent, url: str
@@ -2806,7 +2806,7 @@ class FixedUniversalContentExtractor:
         ):
             return "story"
 
-        return "general"
+        return "unknown"
 
     def _extract_comment_sections(self, content_area: Tag) -> List[Dict[str, str]]:
         """IMPROVED: Better comment section extraction"""
@@ -3890,7 +3890,7 @@ class FixedUniversalContentExtractor:
         ):
             return "comments"
 
-        return "general"
+        return "unknown"
 
     def _extract_member_comments_format(
         self, content_area: Tag
