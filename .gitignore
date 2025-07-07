@@ -11,7 +11,7 @@ __pycache__/
 .idea/
 
 # Project Output
-data/results
+data/results/*.json
 
 
 # AWS credentials (should be in environment)

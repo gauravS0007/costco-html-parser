@@ -19,6 +19,7 @@ class ContentType(Enum):
     MEMBER = "member"
     SEASONAL = "seasonal"
     MAGAZINE_FRONT_COVER = "magazine_front_cover"
+    UNKNOWN = "unknown"
 
 
 @dataclass
@@ -232,11 +233,34 @@ class MagazineFrontCoverContent(BaseContent):
 
 
 @dataclass
+class UnknownContent(BaseContent):
+    """Unknown content schema for unmatched content types."""
+    content_type: ContentType = ContentType.UNKNOWN
+    
+    # Raw content preservation
+    raw_content: str = ""
+    detected_patterns: List[str] = field(default_factory=list)
+    
+    # Content analysis metadata
+    content_analysis: Dict[str, Union[str, int, List[str]]] = field(default_factory=dict)
+    potential_categories: List[str] = field(default_factory=list)
+    confidence_scores: Dict[str, float] = field(default_factory=dict)
+    
+    # Structure analysis
+    content_structure: Dict[str, int] = field(default_factory=dict)  # headings, paragraphs, lists count
+    extracted_entities: List[str] = field(default_factory=list)  # names, places, products mentioned
+    
+    # Processing metadata
+    processing_notes: List[str] = field(default_factory=list)
+    requires_manual_review: bool = True
+
+
+@dataclass
 class EnhancedPageStructure:
     """Enhanced page structure with rich content schema."""
     url: str
     content: Union[RecipeContent, TravelContent, TechContent, LifestyleContent, 
-                   EditorialContent, ShoppingContent, MemberContent, MagazineFrontCoverContent]
+                   EditorialContent, ShoppingContent, MemberContent, MagazineFrontCoverContent, UnknownContent]
     
     # SEO and metadata
     meta_title: str = ""
